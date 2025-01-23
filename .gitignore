@@ -172,3 +172,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Project based ignores
+data/
+output/
+
+# Temporary ignores
+*.ckpt
