@@ -1,29 +1,19 @@
-import torch.nn as nn
+"""Model definition for layout estimation."""
+
+import math
+from typing import Type
+
+import torch
 import torch.nn.functional as F
-import torchvision.models as models
-
-
-def transposed_conv(in_channels, out_channels, stride=2):
-    """transposed conv with same padding"""
-    kernel_size, padding = {
-        2: (4, 1),
-        4: (8, 2),
-        16: (32, 8),
-    }[stride]
-    layer = nn.ConvTranspose2d(
-        in_channels,
-        out_channels,
-        kernel_size=kernel_size,
-        stride=stride,
-        padding=padding,
-        bias=False,
-    )
-    return layer
+from torch import nn
+from torchtyping import TensorType
+from torchvision import models
 
 
 class PlanarSegHead(nn.Module):
-
-    def __init__(self, bottleneck_channels, in_features=2048, num_classes=5):
+    def __init__(
+        self, bottleneck_channels: int, in_features: int = 2048, num_classes: int = 5
+    ) -> None:
         super().__init__()
         self.drop1 = nn.Dropout(p=0.5)
         self.drop2 = nn.Dropout(p=0.5)
@@ -42,15 +32,19 @@ class PlanarSegHead(nn.Module):
             in_features // 2, bottleneck_channels, kernel_size=1, stride=1, bias=False
         )
 
-        self.dec1 = transposed_conv(bottleneck_channels, bottleneck_channels, stride=2)
-        self.dec2 = transposed_conv(bottleneck_channels, bottleneck_channels, stride=2)
-        self.dec3 = transposed_conv(bottleneck_channels, bottleneck_channels, stride=16)
+        self.dec1 = self.transposed_conv(
+            bottleneck_channels, bottleneck_channels, stride=2
+        )
+        self.dec2 = self.transposed_conv(
+            bottleneck_channels, bottleneck_channels, stride=2
+        )
+        self.dec3 = self.transposed_conv(
+            bottleneck_channels, bottleneck_channels, stride=16
+        )
 
         self.fc_stage2 = nn.Conv2d(
             bottleneck_channels, num_classes, kernel_size=1, stride=1, bias=False
         )
-
-        import math
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -60,8 +54,9 @@ class PlanarSegHead(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def forward(self, *feats):
-        e7, e6, e5 = feats
+    def forward(self, *features) -> torch.Tensor:
+        """Forward pass of the model."""
+        e7, e6, e5 = features
 
         x = self.drop1(e7)
         x = self.fc_conv(x)
@@ -81,21 +76,39 @@ class PlanarSegHead(nn.Module):
         d = self.fc_stage2(d0)
         return d
 
+    @staticmethod
+    def transposed_conv(
+        in_channels: int, out_channels: int, stride=2
+    ) -> nn.ConvTranspose2d:
+        """Transposed conv with same padding."""
+        kernel_size, padding = {
+            2: (4, 1),
+            4: (8, 2),
+            16: (32, 8),
+        }[stride]
+        layer = nn.ConvTranspose2d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            bias=False,
+        )
+        return layer
+
 
 class ResPlanarSeg(nn.Module):
 
-    def __init__(self, pretrained=True, backbone="resnet101"):
+    def __init__(self, pretrained: bool = True, backbone: str = "resnet101") -> None:
         super().__init__()
-        BackBone = getattr(models, backbone)
-        self.resnet = BackBone(pretrained=pretrained)
+        Backbone: Type[models.ResNet] = getattr(models, backbone)
+        self.resnet = Backbone(pretrained=pretrained)
         self.planar_seg = PlanarSegHead(
             bottleneck_channels=37, in_features=self.resnet.fc.in_features
         )
 
-    def forward(self, x):
-        """
-        x: 3 x 320 x 320
-        """
+    def forward(self, x: TensorType[3, 320, 320]) -> torch.Tensor:
+        """Forward pass of the model."""
         x = self.resnet.conv1(x)  # 64 x 160 x 160
         x = self.resnet.bn1(x)
         e1 = self.resnet.relu(x)
