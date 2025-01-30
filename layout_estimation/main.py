@@ -1,7 +1,11 @@
-import pathlib
+"""Main module for layout estimation."""
+
+from enum import IntEnum
+from pathlib import Path
 
 import cv2
 import numpy as np
+import PIL
 import torch
 
 from . import core, sequence
@@ -9,72 +13,112 @@ from . import core, sequence
 torch.backends.cudnn.benchmark = True
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+WEIGHT = Path("./layout_estimation/weights/model_retrained.ckpt")
+
+
+class LayoutSegmentationLabels(IntEnum):
+    WALL_CENTER = 0
+    WALL_LEFT = 1
+    WALL_RIGHT = 2
+    FLOOR = 3
+    CEILING = 4
+
+    @classmethod
+    def walls(
+        cls,
+    ) -> tuple[
+        "LayoutSegmentationLabels",
+        "LayoutSegmentationLabels",
+        "LayoutSegmentationLabels",
+    ]:
+        return cls.WALL_CENTER, cls.WALL_LEFT, cls.WALL_RIGHT
 
 
 class Predictor:
-    def __init__(self, weight_path: str):
+    """Predictor for layout estimation."""
+
+    def __init__(self, weight_path: Path) -> None:
+        # pylint: disable=E1120
         self.model = core.LayoutSeg.load_from_checkpoint(
-            weight_path, backbone="resnet101"
+            checkpoint_path=weight_path, backbone="resnet101"
         )
         self.model.freeze()
         self.model.to(DEVICE)
 
     @torch.no_grad()
-    def feed(self, image: torch.Tensor, alpha: int = 0.4) -> np.ndarray:
+    def feed(self, image: torch.Tensor) -> np.ndarray:
+        """Feed image to the model and return the multi-class label mask."""
+        _, outputs = self.model(image.unsqueeze(0).to(DEVICE))
+        return outputs.permute(1, 2, 0).cpu().numpy().squeeze(-1)
+
+    @torch.no_grad()
+    def feed_and_blend(self, image: torch.Tensor, alpha: int = 0.4) -> np.ndarray:
+        """Feed image to the model and return the blended output."""
         _, outputs = self.model(image.unsqueeze(0).to(DEVICE))
         label = core.label_as_rgb_visual(outputs.cpu()).squeeze(0)
         blend_output = (image / 2 + 0.5) * (1 - alpha) + (label * alpha)
         return blend_output.permute(1, 2, 0).numpy()
 
 
-def estimate_layout_save_image(path, weight, image_size, cat_visual, output_folder):
-    output_folder = pathlib.Path(output_folder)
-    output_folder.mkdir(exist_ok=True, parents=True)
+class LayoutEstimator:
+    def __init__(self) -> None:
+        self.weight_path = WEIGHT
+        self.predictor = Predictor(self.weight_path)
 
-    predictor = Predictor(weight_path=weight)
-    images = sequence.ImageFolder(image_size, path)
+    def estimate_layout_coloured(
+        self,
+        image_path: Path,
+        model_image_size: int,
+        cat_visual: bool,
+        output_folder: Path,
+    ) -> None:
+        output_folder = Path(output_folder)
+        output_folder.mkdir(exist_ok=True, parents=True)
 
-    for image, shape, path in images:
-        label = cv2.resize(predictor.feed(image, alpha=1.0), shape)
+        image, shape = sequence.Image.parse(model_image_size, image_path)
+
+        label = cv2.resize(self.predictor.feed_and_blend(image, alpha=1.0), shape)
         image = cv2.resize((image / 2 + 0.5).permute(1, 2, 0).numpy(), shape)
         if cat_visual:
             output = np.concatenate([image, label], axis=1)
         else:
             output = label
-        output_path = output_folder / path.name
+        output_path = output_folder / image_path.name
+
         cv2.imwrite(str(output_path), (output[..., ::-1] * 255).astype(np.uint8))
 
+    def estimate_walls(
+        self,
+        image_path: Path,
+        model_image_size: int,
+    ) -> list[np.ndarray]:
+        image, shape = sequence.Image.parse(model_image_size, image_path)
 
-# def image(path, weight, image_size):
-#     logger.info("Press `q` to exit the sequence inference.")
-#     predictor = Predictor(weight_path=weight)
-#     images = sequence.ImageFolder(image_size, path)
+        label_mask = cv2.resize(
+            self.predictor.feed(image), shape, interpolation=PIL.Image.NEAREST
+        )
+        walls_masks = [
+            np.isin(label_mask, wall_side)
+            for wall_side in LayoutSegmentationLabels.walls()
+        ]
 
-#     for image, shape, _ in images:
-#         output = cv2.resize(predictor.feed(image), shape)
-#         cv2.imshow("layout", output[..., ::-1])
-#         if cv2.waitKey(0) & 0xFF == ord("q"):
-#             break
-
-
-# def video(device, path, weight, image_size):
-#     predictor = Predictor(weight_path=weight)
-#     stream = sequence.VideoStream(image_size, path, device)
-
-#     for image in stream:
-#         output = cv2.resize(predictor.feed(image), stream.origin_size)
-#         cv2.imshow("layout", output[:, :, ::-1])
-#         if cv2.waitKey(1) & 0xFF == ord("q"):
-#             break
-#     cv2.destroyAllWindows()
+        return walls_masks
 
 
 if __name__ == "__main__":
-    # video(0, None, "./layout_estimation/checkpoint/model_retrained.ckpt", 320)
-    estimate_layout_save_image(
-        "./data/0a578e8af1642d0c1e715aaa04478858ac0aab01.jpg",
-        "./layout_estimation/weights/model_retrained.ckpt",
-        320,
-        False,
-        "./output/",
+    # estimate_layout_coloured(
+    #     Path("./data/1a98599d3f7d168f2cf53e64ad1dd5c6e95e1b64.jpg"),
+    #     core.MODEL_IMAGE_SIZE,
+    #     True,
+    #     Path("./output"),
+    # )
+    layout_estimator = LayoutEstimator()
+    walls_masks = layout_estimator.estimate_walls(
+        Path("./data/1a98599d3f7d168f2cf53e64ad1dd5c6e95e1b64.jpg"),
+        core.MODEL_IMAGE_SIZE,
+    )
+
+    cv2.imwrite(
+        "./output/wall_layout_segmentation_mask.png",
+        walls_masks[0].astype(np.uint8) * 255,
     )
