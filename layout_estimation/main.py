@@ -104,6 +104,33 @@ class LayoutEstimator:
 
         return walls_masks
 
+    @staticmethod
+    def find_wall_corners(mask: np.ndarray):
+        """Find the corners of the wall in the mask.
+
+        Assumes that the wall is the largest closed quadrilateral in the mask."""
+        mask = mask.astype(np.uint8) * 255
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if not contours:
+            assert "No wall found in the image."
+
+        print(f"contours: {len(contours)}")
+        contour = max(contours, key=cv2.contourArea)
+
+        epsilon = 0.02 * cv2.arcLength(contour, closed=True)
+        approx = cv2.approxPolyDP(contour, epsilon, closed=True)
+
+        if len(approx) != 4:
+            assert "Wall is not a quadrilateral."
+
+        corners = approx.reshape(-1, 2)
+
+        if len(corners) != 4:
+            assert "Wall is not a quadrilateral."
+
+        return corners
+
 
 if __name__ == "__main__":
     # estimate_layout_coloured(
