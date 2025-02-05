@@ -15,12 +15,12 @@ def predict_wall_segmentation(
     segmentation_module: SegmentationModule,
     path_image: Path,
 ):
-    segmentation_mask = segment_image(segmentation_module, path_image, disp_image=False)
+    segmentation_mask = segment_image(segmentation_module, path_image)
     return segmentation_mask
 
 
 def create_segmentation_module() -> SegmentationModule:
-    net_encoder = build_encoder(WEIGHTS_ENCODER)
+    net_encoder = build_encoder(WEIGHTS_ENCODER, encoder_model="resnet101-dilated")
     net_decoder = build_decoder(WEIGHTS_DECODER)
 
     segmentation_module = SegmentationModule(net_encoder, net_decoder)
