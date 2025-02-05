@@ -191,7 +191,8 @@ class ResNet(nn.Module):
 
 def resnet18(pretrained=False, **kwargs):
     """
-    Function for instantiating resnet101 with specific number of layers and load pretrained network if needed
+    Function for instantiating resnet101 with specific number of layers and load
+    pretrained network if needed
     """
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
@@ -207,7 +208,8 @@ def resnet18(pretrained=False, **kwargs):
 
 def resnet50(pretrained=False):
     """
-    Function for instantiating resnet50 with specific number of layers and load pretrained network if needed
+    Function for instantiating resnet50 with specific number of layers and load
+    pretrained network if needed
     """
     model = ResNet(Bottleneck, [3, 4, 6, 3])
 
@@ -225,7 +227,8 @@ def resnet50(pretrained=False):
 
 def resnet101(pretrained=False, **kwargs):
     """
-    Function for instantiating resnet101 with specific number of layers and load pretrained network if needed
+    Function for instantiating resnet101 with specific number of layers and load
+    pretrained network if needed
     """
     model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
     if pretrained:

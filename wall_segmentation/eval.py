@@ -4,56 +4,14 @@ import numpy as np
 import PIL
 import torch
 import torchvision.transforms
-from tqdm import tqdm
 
 from .constants import DEVICE, IMAGENET_MEAN, IMAGENET_STD
 from .models import SegmentationModule
-from .utils import IOU, accuracy, visualize_wall
-
-
-def validation_step(segmentation_module, loader, writer, epoch):
-    """
-    Function for evaluating the segmentation module on validation dataset
-    """
-    segmentation_module.eval()
-    segmentation_module.to(DEVICE)
-
-    total_acc = 0
-    total_IOU = 0
-    counter = 0
-
-    for batch_data in tqdm(loader):
-        batch_data = batch_data[0]
-
-        seg_label = np.array(batch_data["seg_label"])
-        seg_size = (seg_label.shape[0], seg_label.shape[1])
-
-        with torch.no_grad():
-            scores = segmentation_module(batch_data, seg_size=seg_size)
-
-        _, pred = torch.max(scores, dim=1)
-        pred = pred.cpu()[0].numpy()
-
-        # calculate accuracy and IOU
-        acc, _ = accuracy(pred, seg_label)
-        IOU_curr = IOU(scores.cpu(), seg_label)
-        total_IOU += IOU_curr
-        total_acc += acc
-        counter += 1
-
-    average_acc = total_acc / counter
-    average_IOU = total_IOU / counter
-
-    writer.add_scalar("Validation set: accuracy", average_acc, epoch)
-    writer.add_scalar("Validation set: IOU", average_IOU, epoch)
-
-    return average_acc, average_IOU
 
 
 def segment_image(
     segmentation_module: SegmentationModule,
     img: Path | PIL.Image.Image,
-    disp_image: bool = False,
 ):
     """
     Function for segmenting wall in the input image. The input can be path to image, or
@@ -79,8 +37,5 @@ def segment_image(
 
     _, pred = torch.max(scores, dim=1)
     pred = pred.cpu()[0].numpy()
-
-    if disp_image:
-        visualize_wall(img_original, pred)
 
     return pred
