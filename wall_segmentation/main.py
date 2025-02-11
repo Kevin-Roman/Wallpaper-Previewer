@@ -46,7 +46,9 @@ class WallSegmenter:
         _, pred = torch.max(scores, dim=1)
         pred = pred.cpu()[0].numpy()
 
-        return pred
+        # The model was trained to classify the wall as class 0.
+        # Therefore, the prediction is inverted to have the wall as class 1.
+        return 1 - pred
 
 
 if __name__ == "__main__":
