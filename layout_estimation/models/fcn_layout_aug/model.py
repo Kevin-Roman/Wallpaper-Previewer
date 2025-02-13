@@ -3,11 +3,62 @@
 import math
 from typing import Type
 
+import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torchtyping import TensorType
 from torchvision import models
+
+
+class LayoutSeg(pl.LightningModule):
+    """Layout segmentation model."""
+
+    def __init__(
+        self,
+        lr: float = 1e-4,
+        backbone: str = "resnet101",
+        l1_factor: float = 0.2,
+        l2_factor: float = 0.0,
+        edge_factor: float = 0.2,
+    ) -> None:
+        super().__init__()
+        self.lr = lr
+        self.model = ResPlanarSeg(pretrained=True, backbone=backbone)
+        self.l1_factor = l1_factor
+        self.l2_factor = l2_factor
+        self.edge_factor = edge_factor
+        self.save_hyperparameters()
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        scores = self.model(inputs)
+        _, outputs = torch.max(scores, 1)
+        return scores, outputs
+
+
+class ResPlanarSeg(nn.Module):
+
+    def __init__(self, pretrained: bool = True, backbone: str = "resnet101") -> None:
+        super().__init__()
+        Backbone: Type[models.ResNet] = getattr(models, backbone)
+        self.resnet = Backbone(pretrained=pretrained)
+        self.planar_seg = PlanarSegHead(
+            bottleneck_channels=37, in_features=self.resnet.fc.in_features
+        )
+
+    def forward(self, x: TensorType[3, 320, 320]) -> torch.Tensor:
+        """Forward pass of the model."""
+        x = self.resnet.conv1(x)  # 64 x 160 x 160
+        x = self.resnet.bn1(x)
+        e1 = self.resnet.relu(x)
+        e2 = self.resnet.maxpool(e1)  # 64 x 80 x 80
+        e3 = self.resnet.layer1(e2)  # 256 x 80 x 80
+        e4 = self.resnet.layer2(e3)  # 512 x 40 x 40
+        e5 = self.resnet.layer3(e4)  # 1024  x 20 x 20
+        e6 = self.resnet.layer4(e5)  # 2048 x 10 x 10
+        e7 = self.resnet.maxpool(e6)  # 2048 x 5 x 5
+
+        return self.planar_seg(e7, e6, e5)
 
 
 class PlanarSegHead(nn.Module):
@@ -95,28 +146,3 @@ class PlanarSegHead(nn.Module):
             bias=False,
         )
         return layer
-
-
-class ResPlanarSeg(nn.Module):
-
-    def __init__(self, pretrained: bool = True, backbone: str = "resnet101") -> None:
-        super().__init__()
-        Backbone: Type[models.ResNet] = getattr(models, backbone)
-        self.resnet = Backbone(pretrained=pretrained)
-        self.planar_seg = PlanarSegHead(
-            bottleneck_channels=37, in_features=self.resnet.fc.in_features
-        )
-
-    def forward(self, x: TensorType[3, 320, 320]) -> torch.Tensor:
-        """Forward pass of the model."""
-        x = self.resnet.conv1(x)  # 64 x 160 x 160
-        x = self.resnet.bn1(x)
-        e1 = self.resnet.relu(x)
-        e2 = self.resnet.maxpool(e1)  # 64 x 80 x 80
-        e3 = self.resnet.layer1(e2)  # 256 x 80 x 80
-        e4 = self.resnet.layer2(e3)  # 512 x 40 x 40
-        e5 = self.resnet.layer3(e4)  # 1024  x 20 x 20
-        e6 = self.resnet.layer4(e5)  # 2048 x 10 x 10
-        e7 = self.resnet.maxpool(e6)  # 2048 x 5 x 5
-
-        return self.planar_seg(e7, e6, e5)

@@ -177,5 +177,9 @@ cython_debug/
 data/
 output/
 
-# Temporary ignores
+# Temporary
 *.ckpt
+*.pth
+
+# VSCode
+.vscode/
