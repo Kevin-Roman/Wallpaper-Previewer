@@ -1,8 +1,11 @@
+from functools import partial
+
 import torch
 import torch.nn as nn
+
+from ...common import DEVICE
+from .constants import FC_DIM, NUM_CLASSES
 from .resnet import resnet18, resnet50, resnet101
-from functools import partial
-from .constants import DEVICE, FC_DIM, NUM_CLASSES
 
 
 class SegmentationModule(nn.Module):
@@ -21,7 +24,7 @@ class SegmentationModule(nn.Module):
         """
 
         return self.decoder(
-            self.encoder(input_dict["img_data"].to(DEVICE)), seg_size=seg_size
+            self.encoder(input_dict["image_data"].to(DEVICE)), seg_size=seg_size
         )
 
 
