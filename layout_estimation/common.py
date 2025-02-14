@@ -1,4 +1,5 @@
 from enum import IntEnum
+from typing import Literal
 
 import torch
 
@@ -16,8 +17,15 @@ class LayoutSegmentationLabels(IntEnum):
     def walls(
         cls,
     ) -> tuple[
-        "LayoutSegmentationLabels",
-        "LayoutSegmentationLabels",
-        "LayoutSegmentationLabels",
+        "LayoutSegmentationLabelsOnlyWalls",
+        "LayoutSegmentationLabelsOnlyWalls",
+        "LayoutSegmentationLabelsOnlyWalls",
     ]:
         return cls.WALL_CENTER, cls.WALL_LEFT, cls.WALL_RIGHT
+
+
+LayoutSegmentationLabelsOnlyWalls = Literal[
+    LayoutSegmentationLabels.WALL_CENTER,
+    LayoutSegmentationLabels.WALL_LEFT,
+    LayoutSegmentationLabels.WALL_RIGHT,
+]

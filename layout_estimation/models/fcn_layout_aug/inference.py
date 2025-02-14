@@ -5,7 +5,11 @@ import numpy as np
 import torch
 from PIL import Image as PILImage
 
-from ...common import DEVICE, LayoutSegmentationLabels
+from ...common import (
+    DEVICE,
+    LayoutSegmentationLabels,
+    LayoutSegmentationLabelsOnlyWalls,
+)
 from ..base_model import BaseLayoutEstimator
 from .constants import MODEL_IMAGE_SIZE, WEIGHT_PATH
 from .model import LayoutSeg
@@ -38,24 +42,22 @@ class FCNLayoutAugLayoutEstimator(BaseLayoutEstimator):
         self,
         image: PILImage.Image,
         model_image_size: int = MODEL_IMAGE_SIZE,
-    ) -> list[np.ndarray]:
+    ) -> dict[LayoutSegmentationLabelsOnlyWalls, np.ndarray]:
         """Estimates the layout of the room using the given predictor.
 
-        Returns a list of boolean masks representing each of the walls (excluding
-        the ceiling and floor). Maximum number of walls that can be returned is 3.
+        Returns a dictionary mapping the wall label to the corresponding boolean
+        mask of the wall. Maximum number of walls that can be returned is 3.
         """
         image, shape = ProcessImage.parse(model_image_size, image)
 
-        # The original image
         label_mask = cv2.resize(
             self._predictor.feed(image), shape, interpolation=PILImage.NEAREST
         )
-        walls_masks = [
-            np.isin(label_mask, wall_side)
-            for wall_side in LayoutSegmentationLabels.walls()
-        ]
 
-        return walls_masks
+        return {
+            wall_side: np.isin(label_mask, wall_side)
+            for wall_side in LayoutSegmentationLabels.walls()
+        }
 
 
 class Predictor:
@@ -84,5 +86,5 @@ if __name__ == "__main__":
 
     cv2.imwrite(
         "./output/wall_layout_segmentation_mask.png",
-        walls_masks[0].astype(np.uint8) * 255,
+        walls_masks[LayoutSegmentationLabels.WALL_CENTER].astype(np.uint8) * 255,
     )
