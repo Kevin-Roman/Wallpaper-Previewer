@@ -1,5 +1,3 @@
-"""Main module for layout estimation."""
-
 from enum import IntEnum
 
 import torch
