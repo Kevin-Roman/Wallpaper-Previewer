@@ -5,6 +5,8 @@ import cv2
 import numpy as np
 from PIL import Image as PILImage
 
+from ..common import LayoutSegmentationLabels
+
 EPSILON_DEVIATION = 0.02
 
 
@@ -43,11 +45,13 @@ class BaseLayoutEstimator(ABC):
     """
 
     @abstractmethod
-    def estimate_layout(self, image: PILImage.Image) -> list[np.ndarray]:
+    def estimate_layout(
+        self, image: PILImage.Image
+    ) -> dict[LayoutSegmentationLabels, np.ndarray]:
         """Estimates the layout of the room using the given predictor.
 
-        Returns a list of boolean masks representing each of the walls (excluding
-        the ceiling and floor). Maximum number of walls that can be returned is 3.
+        Returns a dictionary mapping the wall label to the corresponding boolean
+        mask of the wall. Maximum number of walls that can be returned is 3.
         """
         pass
 
