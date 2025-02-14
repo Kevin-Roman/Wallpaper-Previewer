@@ -50,6 +50,7 @@ class FCNLayoutAugLayoutEstimator(BaseLayoutEstimator):
         """
         image, shape = ProcessImage.parse(model_image_size, image)
 
+        # The original image
         label_mask = cv2.resize(
             self._predictor.feed(image), shape, interpolation=PILImage.NEAREST
         )
