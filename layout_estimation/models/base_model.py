@@ -7,7 +7,7 @@ from PIL import Image as PILImage
 
 from ..common import LayoutSegmentationLabels
 
-EPSILON_DEVIATION = 0.02
+EPSILON_DEVIATION = 0.03
 
 
 @dataclass
