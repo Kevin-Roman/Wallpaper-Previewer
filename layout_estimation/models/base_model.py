@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import cv2
 import numpy as np
+from cv2.typing import MatLike
 from PIL import Image as PILImage
 
 from ..common import LayoutSegmentationLabels
@@ -54,6 +55,28 @@ class BaseLayoutEstimator(ABC):
         mask of the wall. Maximum number of walls that can be returned is 3.
         """
         pass
+
+    @staticmethod
+    def quadrilateral_plane(
+        selected_wall_plane_mask: np.ndarray,
+        mask_shape: tuple[int, int],
+    ) -> tuple[MatLike, np.ndarray] | None:
+        if not (
+            wall_corners := BaseLayoutEstimator.estimate_wall_corners(
+                selected_wall_plane_mask
+            )
+        ):
+            return
+
+        corner_coords = (
+            wall_corners.get_corners_clockwise_from_second_quadrant().astype(np.float32)
+        )
+
+        # Create a mask for blending.
+        mask = np.zeros(mask_shape, dtype=np.uint8)
+        cv2.fillPoly(mask, [corner_coords.astype(np.int32)], 1)
+
+        return mask, corner_coords
 
     @staticmethod
     def estimate_wall_corners(mask: np.ndarray) -> WallCorners | None:
