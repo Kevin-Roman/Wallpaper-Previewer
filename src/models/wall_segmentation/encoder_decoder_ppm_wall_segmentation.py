@@ -7,7 +7,7 @@ import torchvision.transforms
 from PIL import Image as PILImage
 
 from adapted.wall_segmentation import EncoderDecoderPPMWallSegmentationPredictor
-from src.constants import (
+from constants import (
     ENCODER_DECODER_PPM_WALL_SEGMENTATION_WEIGHTS,
     FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_IMAGENET_MEAN,
     FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_IMAGENET_STD,

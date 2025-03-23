@@ -4,8 +4,8 @@ import torch
 from PIL import Image as PILImage
 
 from adapted.room_layout_estimation import FCNLayoutAugLayoutEstimationPredictor
+from constants import FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_WEIGHTS
 from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
-from src.constants import FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_WEIGHTS
 from src.interfaces import RoomLayoutEstimator
 
 # The model and input size remains the same, therefore, it may benefit from

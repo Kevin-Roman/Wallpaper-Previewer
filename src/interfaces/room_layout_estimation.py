@@ -5,8 +5,9 @@ import numpy as np
 from cv2.typing import MatLike
 from PIL import Image as PILImage
 
+from constants import ARC_LENGTH_DEVIATION_TOLERANCE
+
 from ..common import LayoutSegmentationLabelsOnlyWalls, PixelPoint, WallCorners
-from ..constants import ARC_LENGTH_DEVIATION_TOLERANCE
 
 
 class RoomLayoutEstimator(ABC):

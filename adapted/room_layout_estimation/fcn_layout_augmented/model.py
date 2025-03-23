@@ -11,7 +11,8 @@ from torch import nn
 from torchtyping import TensorType
 from torchvision import models
 
-from src.constants import TORCH_DEVICE
+from constants import TORCH_DEVICE
+
 from .constants import MODEL_IMAGE_SIZE
 from .utils import ProcessImage
 

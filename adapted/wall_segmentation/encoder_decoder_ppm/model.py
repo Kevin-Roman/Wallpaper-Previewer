@@ -4,7 +4,8 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
-from src.constants import TORCH_DEVICE
+from constants import TORCH_DEVICE
+
 from .constants import FC_DIM, NUM_CLASSES
 from .resnet import resnet18, resnet50, resnet101
 

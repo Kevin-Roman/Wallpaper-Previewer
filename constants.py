@@ -6,6 +6,7 @@ import torch
 
 # General
 TORCH_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+TEMP_PATH = Path("./temp/")
 
 # Room Layout Estimation
 ARC_LENGTH_DEVIATION_TOLERANCE = 0.03
