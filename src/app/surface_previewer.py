@@ -1,23 +1,27 @@
 from pathlib import Path
+from typing import Type
 
 import cv2
 import numpy as np
 from cv2.typing import MatLike
 from PIL import Image as PILImage
 
-from layout_estimation import (
-    BaseLayoutEstimator,
-    FCNLayoutAugLayoutEstimator,
-    LayoutSegmentationLabels,
-    LayoutSegmentationLabelsOnlyWalls,
-)
-from wall_segmentation import BaseWallSegmenter, EncoderDecoderPPMWallSegmenter
+from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
+from src.interfaces import RoomLayoutEstimator, WallSegmenter
+from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
+from src.models.wall_segmentation import EncoderDecoderPPMWallSegmenter
 
 
 class SurfacePreviewer:
-    def __init__(self) -> None:
-        self.wall_segmenter: BaseWallSegmenter = EncoderDecoderPPMWallSegmenter()
-        self.layout_estimator: BaseLayoutEstimator = FCNLayoutAugLayoutEstimator()
+    def __init__(
+        self,
+        room_layout_estimator: Type[
+            RoomLayoutEstimator
+        ] = FCNAugmentedRoomLayoutEstimator,
+        wall_segmenter: Type[WallSegmenter] = EncoderDecoderPPMWallSegmenter,
+    ) -> None:
+        self.layout_estimator = room_layout_estimator()
+        self.wall_segmenter = wall_segmenter()
 
     def apply_wallpaper(
         self,
@@ -42,17 +46,17 @@ class SurfacePreviewer:
 
         output_image = room_image_cv2
         room_layout_estimation = self.layout_estimator.estimate_layout(room_image_pil)
+
         for selected_wall in selected_walls:
             selected_wall_plane_mask = room_layout_estimation[selected_wall]
 
-            if not (
-                wallpaper_applied_image := self.__apply_wallpaper_to_selected_wall(
-                    room_image_cv2,
-                    wallpaper_image_cv2,
-                    segmented_wall_mask,
-                    selected_wall_plane_mask,
-                )
-            ):
+            wallpaper_applied_image = self.__apply_wallpaper_to_selected_wall(
+                room_image_cv2,
+                wallpaper_image_cv2,
+                segmented_wall_mask,
+                selected_wall_plane_mask,
+            )
+            if wallpaper_applied_image is None:
                 continue
 
             output_image = wallpaper_applied_image
@@ -125,8 +129,8 @@ class SurfacePreviewer:
         self,
         room_image_cv2: MatLike,
         wallpaper_image_cv2: MatLike,
-        segmented_wall_mask: np.ndarray,
-        selected_wall_plane_mask: np.ndarray,
+        segmented_wall_mask: MatLike,
+        selected_wall_plane_mask: MatLike,
     ) -> MatLike | None:
         """Transforms and applies a wallpaper onto a wall region in an image."""
         if not (

@@ -1,14 +1,38 @@
-"""Model definition for layout estimation."""
-
 import math
+from pathlib import Path
 from typing import Type
 
+import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
+from PIL import Image as PILImage
 from torch import nn
 from torchtyping import TensorType
 from torchvision import models
+
+from src.constants import TORCH_DEVICE
+from .constants import MODEL_IMAGE_SIZE
+from .utils import ProcessImage
+
+
+class Predictor:
+    """Predictor for layout estimation."""
+
+    def __init__(self, weight_path: Path, backbone: str = "resnet101") -> None:
+        # pylint: disable=E1120
+        self.model = LayoutSeg.load_from_checkpoint(
+            checkpoint_path=weight_path, backbone=backbone
+        )
+        self.model.freeze()
+        self.model.to(TORCH_DEVICE)
+
+    @torch.no_grad()
+    def feed(self, image_pil: PILImage.Image) -> np.ndarray:
+        """Feed image to the model and return the multi-class label mask."""
+        image_tensor = ProcessImage.parse(MODEL_IMAGE_SIZE, image_pil)
+        _, outputs = self.model(image_tensor.unsqueeze(0).to(TORCH_DEVICE))
+        return outputs.permute(1, 2, 0).cpu().numpy().squeeze(-1)
 
 
 class LayoutSeg(pl.LightningModule):
@@ -30,7 +54,7 @@ class LayoutSeg(pl.LightningModule):
         self.edge_factor = edge_factor
         self.save_hyperparameters()
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor):
         scores = self.model(inputs)
         _, outputs = torch.max(scores, 1)
         return scores, outputs

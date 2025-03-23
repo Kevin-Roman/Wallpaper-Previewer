@@ -6,13 +6,17 @@ import torch
 import torchvision.transforms
 from PIL import Image as PILImage
 
-from ...common import DEVICE
-from ..base_model import BaseWallSegmenter
-from .constants import IMAGENET_MEAN, IMAGENET_STD, WEIGHTS_DECODER, WEIGHTS_ENCODER
-from .model import SegmentationModule, build_decoder, build_encoder
+from adapted.wall_segmentation import EncoderDecoderPPMWallSegmentationPredictor
+from src.constants import (
+    ENCODER_DECODER_PPM_WALL_SEGMENTATION_WEIGHTS,
+    FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_IMAGENET_MEAN,
+    FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_IMAGENET_STD,
+    TORCH_DEVICE,
+)
+from src.interfaces.wall_segmentation import WallSegmenter
 
 
-class EncoderDecoderPPMWallSegmenter(BaseWallSegmenter):
+class EncoderDecoderPPMWallSegmenter(WallSegmenter):
     """Performs wall segmentation in 2D images by classifying pixels as wall or no-wall
     using an encoder-decoder architecture with a dilated ResNet50/101 network.
 
@@ -28,11 +32,12 @@ class EncoderDecoderPPMWallSegmenter(BaseWallSegmenter):
     """
 
     def __init__(self) -> None:
-        net_encoder = build_encoder(WEIGHTS_ENCODER, encoder_model="resnet101-dilated")
-        net_decoder = build_decoder(WEIGHTS_DECODER)
-        segmentation_module = SegmentationModule(net_encoder, net_decoder)
+        segmentation_module = EncoderDecoderPPMWallSegmentationPredictor(
+            ENCODER_DECODER_PPM_WALL_SEGMENTATION_WEIGHTS.encoder,
+            ENCODER_DECODER_PPM_WALL_SEGMENTATION_WEIGHTS.decoder,
+        )
 
-        self.segmentation_module = segmentation_module.to(DEVICE).eval()
+        self.segmentation_module = segmentation_module.to(TORCH_DEVICE).eval()
 
     def segment_wall(
         self,
@@ -41,7 +46,10 @@ class EncoderDecoderPPMWallSegmenter(BaseWallSegmenter):
         pil_to_tensor = torchvision.transforms.Compose(
             [
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+                torchvision.transforms.Normalize(
+                    mean=FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_IMAGENET_MEAN,
+                    std=FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_IMAGENET_STD,
+                ),
             ]
         )
 
@@ -52,7 +60,8 @@ class EncoderDecoderPPMWallSegmenter(BaseWallSegmenter):
         # Speed up inference by disabling gradient tracking.
         with torch.no_grad():
             scores = self.segmentation_module(
-                {"image_data": image_data.unsqueeze(0).to(DEVICE)}, seg_size=seg_size
+                {"image_data": image_data.unsqueeze(0).to(TORCH_DEVICE)},
+                seg_size=seg_size,
             )
 
         _, predictions = torch.max(scores, dim=1)

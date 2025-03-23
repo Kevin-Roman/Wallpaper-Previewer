@@ -1,58 +1,29 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 
 import cv2
 import numpy as np
 from cv2.typing import MatLike
 from PIL import Image as PILImage
 
-from ..common import LayoutSegmentationLabels
-
-EPSILON_DEVIATION = 0.03
-
-
-@dataclass
-class PixelPoint:
-    row: int
-    col: int
-
-    def __iter__(self) -> tuple[int, int]:
-        return iter((self.col, self.row))
+from ..common import LayoutSegmentationLabelsOnlyWalls, PixelPoint, WallCorners
+from ..constants import ARC_LENGTH_DEVIATION_TOLERANCE
 
 
-@dataclass
-class WallCorners:
-    top_left: PixelPoint
-    top_right: PixelPoint
-    bottom_right: PixelPoint
-    bottom_left: PixelPoint
-
-    def get_corners_clockwise_from_second_quadrant(self) -> np.ndarray:
-        """Returns a numpy array representing the corners, ordered
-        clockwise from the second quadrant (top-left)."""
-        return np.array(
-            [
-                tuple(self.top_left),
-                tuple(self.top_right),
-                tuple(self.bottom_right),
-                tuple(self.bottom_left),
-            ]
-        )
-
-
-class BaseLayoutEstimator(ABC):
-    """Base class for layout estimators (predicting the layout of a room, including
+class RoomLayoutEstimator(ABC):
+    """Base class for room layout estimators (predicting the layout of a room, including
     segmenting the different walls/ceiling/floor)
     """
 
     @abstractmethod
     def estimate_layout(
         self, image: PILImage.Image
-    ) -> dict[LayoutSegmentationLabels, np.ndarray]:
+    ) -> dict[LayoutSegmentationLabelsOnlyWalls, np.ndarray]:
         """Estimates the layout of the room using the given predictor.
 
         Returns a dictionary mapping the wall label to the corresponding boolean
         mask of the wall. Maximum number of walls that can be returned is 3.
+
+        If no quadrilateral plane is detected, None is returned.
         """
         pass
 
@@ -62,7 +33,7 @@ class BaseLayoutEstimator(ABC):
         mask_shape: tuple[int, int],
     ) -> tuple[MatLike, np.ndarray] | None:
         if not (
-            wall_corners := BaseLayoutEstimator.estimate_wall_corners(
+            wall_corners := RoomLayoutEstimator.estimate_wall_corners(
                 selected_wall_plane_mask
             )
         ):
@@ -79,10 +50,11 @@ class BaseLayoutEstimator(ABC):
         return mask, corner_coords
 
     @staticmethod
-    def estimate_wall_corners(mask: np.ndarray) -> WallCorners | None:
-        """Find the corners of the wall in a boolean mask.
+    def estimate_wall_corners(mask: MatLike) -> WallCorners | None:
+        """Finds the corners of the wall in a boolean mask.
 
-        Assumes that the wall is the largest closed quadrilateral in the mask."""
+        Assumes that the wall is the largest closed quadrilateral in the mask.
+        """
         # Convert to an image so that it can be passed through cv2 functions.
         image = mask.astype(np.uint8) * 255
 
@@ -96,7 +68,6 @@ class BaseLayoutEstimator(ABC):
         )
 
         if not contours:
-            assert "No wall found in the image."
             return
 
         # Select the largest contour based on it's area.
@@ -104,7 +75,7 @@ class BaseLayoutEstimator(ABC):
 
         # `cv2.arcLength` calculates the perimeter of the contour which is a closed
         # shape. Epsilon is the tolerance factor for the contour approximation.
-        epsilon = EPSILON_DEVIATION * cv2.arcLength(contour, closed=True)
+        epsilon = ARC_LENGTH_DEVIATION_TOLERANCE * cv2.arcLength(contour, closed=True)
         # Approximates the contour into a polygon.
         polygon = cv2.approxPolyDP(contour, epsilon, closed=True)
 
@@ -126,6 +97,7 @@ class BaseLayoutEstimator(ABC):
 
         # Order the corners based on angle between the center and the corner
         # (unit circle [-pi, pi])
+        # ! TODO: fix the ordering of the corners
         corners_ordered = sorted(
             corners,
             key=lambda corner: np.arctan2(

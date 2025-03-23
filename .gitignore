@@ -183,3 +183,6 @@ output/
 
 # VSCode
 .vscode/
+
+# Other
+weights/

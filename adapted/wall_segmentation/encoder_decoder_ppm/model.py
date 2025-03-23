@@ -1,9 +1,10 @@
 from functools import partial
+from pathlib import Path
 
 import torch
 import torch.nn as nn
 
-from ...common import DEVICE
+from src.constants import TORCH_DEVICE
 from .constants import FC_DIM, NUM_CLASSES
 from .resnet import resnet18, resnet50, resnet101
 
@@ -13,10 +14,15 @@ class SegmentationModule(nn.Module):
     Segmentation Module class
     """
 
-    def __init__(self, net_encoder, net_decoder):
-        super(SegmentationModule, self).__init__()
-        self.encoder = net_encoder
-        self.decoder = net_decoder
+    def __init__(
+        self,
+        encoder_weight_path: Path,
+        decoder_weight_path: Path,
+        encoder_model: str = "resnet101-dilated",
+    ):
+        super().__init__()
+        self.encoder = build_encoder(str(encoder_weight_path.resolve()), encoder_model)
+        self.decoder = build_decoder(str(decoder_weight_path.resolve()))
 
     def forward(self, input_dict, seg_size=None):
         """
@@ -24,7 +30,7 @@ class SegmentationModule(nn.Module):
         """
 
         return self.decoder(
-            self.encoder(input_dict["image_data"].to(DEVICE)), seg_size=seg_size
+            self.encoder(input_dict["image_data"].to(TORCH_DEVICE)), seg_size=seg_size
         )
 
 

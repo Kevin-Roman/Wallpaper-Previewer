@@ -3,12 +3,9 @@ from tkinter import filedialog
 import customtkinter as ctk
 from PIL import Image as PILImage
 
-from layout_estimation.common import (
-    LayoutSegmentationLabels,
-    LayoutSegmentationLabelsOnlyWalls,
-)
+from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
 
-from .processor import SurfacePreviewer
+from .surface_previewer import SurfacePreviewer
 
 
 class SurfacePreviewerApp(ctk.CTk):
