@@ -28,3 +28,9 @@ ENCODER_DECODER_PPM_WALL_SEGMENTATION_WEIGHTS = namedtuple(
     encoder=Path("./weights/wall_segmentation/encoder_decoder_ppm_encoder.pth"),
     decoder=Path("./weights/wall_segmentation/encoder_decoder_ppm_decoder.pth"),
 )
+
+# Illumination Estimation
+# StyleLight
+STYLEGAN2_ADA_FFHQ_ILLUMINATION_ESTIMATION_WEIGHTS = Path(
+    "./weights/illumination_estimation/network-snapshot-002000.pkl"
+)
