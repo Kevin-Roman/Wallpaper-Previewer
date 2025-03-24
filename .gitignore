@@ -188,3 +188,4 @@ output/
 weights/
 temp/
 checkpoints/
+*.blend1

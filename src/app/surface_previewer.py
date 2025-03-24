@@ -207,6 +207,10 @@ class SurfacePreviewer:
         target_with_overlaid_lighting = cv2.addWeighted(
             target_image, 1, extracted_lighting, 1, 0
         )
+        # Remove non mask areas from the overlay with lighting applied image.
+        target_with_overlaid_lighting = cv2.bitwise_and(
+            target_with_overlaid_lighting, target_with_overlaid_lighting, mask=mask
+        )
 
         return target_with_overlaid_lighting
 
@@ -215,7 +219,7 @@ if __name__ == "__main__":
     previewer = SurfacePreviewer()
     wallpaper_applied = previewer.apply_overlay(
         PILImage.open(Path("./data/0a578e8af1642d0c1e715aaa04478858ac0aab01.jpg")),
-        PILImage.open(Path("./data/saves/proper_3.png")),
+        PILImage.open(Path("./temp/output.png")),
         set(LayoutSegmentationLabels.walls()),
     )
-    wallpaper_applied.save("./output/saves/wallpaper_applied.png")
+    wallpaper_applied.save("./temp/final.png")
