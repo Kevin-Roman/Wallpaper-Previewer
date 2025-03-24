@@ -7,7 +7,8 @@ from cv2.typing import MatLike
 from PIL import Image as PILImage
 
 from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
-from src.interfaces import RoomLayoutEstimator, WallSegmenter
+from src.interfaces import IlluminationEstimator, RoomLayoutEstimator, WallSegmenter
+from src.models.illumination_estimation import DualStyleGANIlluminationEstimator
 from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
 from src.models.wall_segmentation import EncoderDecoderPPMWallSegmenter
 
@@ -19,9 +20,13 @@ class SurfacePreviewer:
             RoomLayoutEstimator
         ] = FCNAugmentedRoomLayoutEstimator,
         wall_segmenter: Type[WallSegmenter] = EncoderDecoderPPMWallSegmenter,
+        illumination_estimator: Type[
+            IlluminationEstimator
+        ] = DualStyleGANIlluminationEstimator,
     ) -> None:
         self.layout_estimator = room_layout_estimator()
         self.wall_segmenter = wall_segmenter()
+        self.illumination_estimator = illumination_estimator()
 
     def apply_wallpaper(
         self,
@@ -34,9 +39,7 @@ class SurfacePreviewer:
         elements/pixels.
         """
 
-        segmented_wall_mask = self.wall_segmenter.segment_wall(room_image_pil).astype(
-            np.uint8
-        )
+        segmented_wall_mask = self.wall_segmenter(room_image_pil).astype(np.uint8)
 
         # CV2 uses BGR whilst PIL use RGB. Therefore, convert RGB images to BGR.
         room_image_cv2 = cv2.cvtColor(np.array(room_image_pil), cv2.COLOR_RGB2BGR)
@@ -45,7 +48,7 @@ class SurfacePreviewer:
         )
 
         output_image = room_image_cv2
-        room_layout_estimation = self.layout_estimator.estimate_layout(room_image_pil)
+        room_layout_estimation = self.layout_estimator(room_image_pil)
 
         for selected_wall in selected_walls:
             selected_wall_plane_mask = room_layout_estimation[selected_wall]
@@ -63,7 +66,7 @@ class SurfacePreviewer:
 
         return PILImage.fromarray(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB))
 
-    def apply_overlay(
+    def __apply_overlay(
         self,
         room_image_pil: PILImage.Image,
         overlay_image_pil: PILImage.Image,
@@ -72,9 +75,9 @@ class SurfacePreviewer:
         """Applies an overlay image over a source room image for chosen walls."""
         room_image_pil_resized = room_image_pil.resize(overlay_image_pil.size)
 
-        segmented_wall_mask = self.wall_segmenter.segment_wall(
-            room_image_pil_resized
-        ).astype(np.uint8)
+        segmented_wall_mask = self.wall_segmenter(room_image_pil_resized).astype(
+            np.uint8
+        )
 
         # CV2 uses BGR whilst PIL use RGB. Therefore, convert RGB images to BGR.
         room_image_cv2 = cv2.cvtColor(
@@ -85,9 +88,7 @@ class SurfacePreviewer:
         all_selected_wall_plane_mask = np.zeros(
             segmented_wall_mask.shape, dtype=np.uint8
         )
-        room_layout_estimation = self.layout_estimator.estimate_layout(
-            room_image_pil_resized
-        )
+        room_layout_estimation = self.layout_estimator(room_image_pil_resized)
         for selected_wall in selected_walls:
             selected_wall_plane_mask = room_layout_estimation[selected_wall]
 
@@ -217,7 +218,7 @@ class SurfacePreviewer:
 
 if __name__ == "__main__":
     previewer = SurfacePreviewer()
-    wallpaper_applied = previewer.apply_overlay(
+    wallpaper_applied = previewer.__apply_overlay(
         PILImage.open(Path("./data/0a578e8af1642d0c1e715aaa04478858ac0aab01.jpg")),
         PILImage.open(Path("./temp/output.png")),
         set(LayoutSegmentationLabels.walls()),

@@ -16,7 +16,7 @@ class RoomLayoutEstimator(ABC):
     """
 
     @abstractmethod
-    def estimate_layout(
+    def __call__(
         self, image: PILImage.Image
     ) -> dict[LayoutSegmentationLabelsOnlyWalls, np.ndarray]:
         """Estimates the layout of the room using the given predictor.

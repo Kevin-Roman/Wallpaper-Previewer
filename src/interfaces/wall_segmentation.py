@@ -8,7 +8,7 @@ class WallSegmenter(ABC):
     """Base class for wall segmentation estimators (classifying pixels as wall or no-wall)."""
 
     @abstractmethod
-    def segment_wall(
+    def __call__(
         self,
         image: PILImage.Image,
     ) -> MatLike:

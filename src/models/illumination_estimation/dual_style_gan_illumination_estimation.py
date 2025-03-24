@@ -22,4 +22,4 @@ if __name__ == "__main__":
     image = PILImage.open(Path("./data/0a578e8af1642d0c1e715aaa04478858ac0aab01.jpg"))
     estimator = DualStyleGANIlluminationEstimator()
     save_path = TEMP_PATH / "test.exr"
-    estimator.estimate_illumination(image, save_path)
+    estimator(image, save_path)

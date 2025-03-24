@@ -39,7 +39,7 @@ class EncoderDecoderPPMWallSegmenter(WallSegmenter):
 
         self.segmentation_module = segmentation_module.to(TORCH_DEVICE).eval()
 
-    def segment_wall(
+    def __call__(
         self,
         image: PILImage.Image,
     ) -> np.ndarray:
@@ -75,7 +75,7 @@ class EncoderDecoderPPMWallSegmenter(WallSegmenter):
 if __name__ == "__main__":
     wall_segmenter = EncoderDecoderPPMWallSegmenter()
 
-    segmentation_mask = wall_segmenter.segment_wall(
+    segmentation_mask = wall_segmenter(
         PILImage.open(Path("./data/1a98599d3f7d168f2cf53e64ad1dd5c6e95e1b64.jpg"))
     )
     cv2.imwrite(
