@@ -194,6 +194,7 @@ class SurfacePreviewer:
         wallpaper_image_cv2: MatLike,
         segmented_wall_mask: MatLike,
         selected_wall_plane_mask: MatLike,
+        transfer_local_highlights: bool = True,
     ) -> MatLike | None:
         """Transforms and applies a wallpaper onto a wall region in an image."""
         if not (
@@ -241,11 +242,16 @@ class SurfacePreviewer:
             (room_image_cv2.shape[1], room_image_cv2.shape[0]),
         )
 
-        # Combine the masks, extend to [0, 255] range, and expand dimensions to
-        # match the 3-channel image.
-        combined_mask = cv2.merge(
-            [cv2.bitwise_and(quadrilateral_plane_mask, segmented_wall_mask) * 255] * 3
-        )
+        combined_mask = cv2.bitwise_and(
+            quadrilateral_plane_mask, segmented_wall_mask
+        ).astype(np.uint8)
+
+        if transfer_local_highlights:
+            warped_wallpaper = self.transfer_lighting_and_shadows(
+                room_image_cv2,
+                combined_mask,
+                warped_wallpaper,
+            )
 
         # Blend the wallpaper with the original image.
         output_image = room_image_cv2.copy()
