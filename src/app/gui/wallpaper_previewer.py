@@ -5,19 +5,19 @@ from PIL import Image as PILImage
 
 from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
 
-from .surface_previewer import SurfacePreviewer
+from ..surface_previewer import SurfacePreviewer
 
 
-class SurfacePreviewerApp(ctk.CTk):
-    def __init__(self) -> None:
+class WallpaperMode(ctk.CTk):
+    def __init__(self, surface_previewer: SurfacePreviewer) -> None:
         super().__init__()
-        self.surface_previewer = SurfacePreviewer()
+        self.surface_previewer = surface_previewer
         self.room_image: PILImage.Image | None = None
         self.wallpaper_image: PILImage.Image | None = None
         self.output_image: PILImage.Image | None = None
 
         # Setup.
-        self.title("room Previewer")
+        self.title("Wallpaper Previewer")
         self.geometry("800x800")
 
         # Image upload buttons.
