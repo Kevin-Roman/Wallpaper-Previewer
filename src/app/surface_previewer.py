@@ -32,6 +32,10 @@ class SurfacePreviewer:
         self.wall_segmenter = wall_segmenter()
         self.illumination_estimator = illumination_estimator()
 
+        self.pattern_height_m = 2.0
+        self.wall_height_m = 2.0
+        self.wall_width_m: float | None = None
+
     def apply_wallpaper(
         self,
         room_image_pil: PILImage.Image,
@@ -58,7 +62,7 @@ class SurfacePreviewer:
             selected_wall_plane_mask = estimate_room_layout[selected_wall]
 
             wallpaper_applied_image = self.__apply_wallpaper_to_selected_wall(
-                room_image_cv2,
+                output_image,
                 wallpaper_image_cv2,
                 segmented_wall_mask,
                 selected_wall_plane_mask,
@@ -225,9 +229,14 @@ class SurfacePreviewer:
             src_coords, corner_coords
         )
 
-        resized_wallpaper = cv2.resize(wallpaper_image_cv2, (width, height))
+        tiled_wallpaper = self.__fill_rectangle_with_pattern(
+            wallpaper_image_cv2,
+            width,
+            height,
+        )
+
         warped_wallpaper = cv2.warpPerspective(
-            resized_wallpaper,
+            tiled_wallpaper,
             perspective_warp_transformation,
             (room_image_cv2.shape[1], room_image_cv2.shape[0]),
         )
@@ -243,6 +252,74 @@ class SurfacePreviewer:
         cv2.copyTo(warped_wallpaper, combined_mask, output_image)
 
         return output_image
+
+    def __fill_rectangle_with_pattern(
+        self,
+        pattern_image: MatLike,
+        rectangle_width_pixels: float,
+        rectangle_height_pixels: float,
+    ):
+        pattern_width_m = self.pattern_height_m * (
+            pattern_image.shape[1] / pattern_image.shape[0]
+        )
+
+        wall_width_m = (
+            self.wall_width_m
+            if self.wall_width_m
+            else (rectangle_width_pixels / rectangle_height_pixels) * self.wall_height_m
+        )
+
+        wall_height_pixels = rectangle_height_pixels
+        wall_width_pixels = rectangle_width_pixels
+        pattern_height_pixels = int(
+            wall_height_pixels / (self.wall_height_m / self.pattern_height_m)
+        )
+        pattern_width_pixels = int(wall_width_pixels / (wall_width_m / pattern_width_m))
+
+        pattern_resized = cv2.resize(
+            pattern_image, (pattern_width_pixels, pattern_height_pixels)
+        )
+        # Crop in the edge case where the pattern is large than the wall-rectangle in
+        # any of the dimensions.
+        pattern_cropped = pattern_resized[
+            : min(pattern_resized.shape[0], wall_height_pixels),
+            : min(pattern_resized.shape[1], wall_width_pixels),
+        ]
+
+        num_repeats_vertical = int(wall_height_pixels // pattern_height_pixels)
+        remainder_vertical_pixels = int(wall_height_pixels % pattern_height_pixels)
+        num_repeats_horizontal = int(wall_width_pixels // pattern_width_pixels)
+        remainder_horizontal_pixels = int(wall_width_pixels % pattern_width_pixels)
+
+        # Repeat pattern within canvas.
+        canvas = np.zeros((wall_height_pixels, wall_width_pixels, 3), dtype=np.uint8)
+
+        # Fill first column of canvas with the pattern.
+        for i in range(num_repeats_vertical):
+            canvas[
+                i * pattern_height_pixels : (i + 1) * pattern_height_pixels,
+                :pattern_width_pixels,
+            ] = pattern_cropped
+
+        # Fill remainder of the first column.
+        if remainder_vertical_pixels > 0:
+            canvas[-remainder_vertical_pixels:, :pattern_width_pixels] = (
+                pattern_resized[-remainder_vertical_pixels:]
+            )
+
+        # Repeat first column.
+        for i in range(1, num_repeats_horizontal):
+            canvas[:, i * pattern_width_pixels : (i + 1) * pattern_width_pixels] = (
+                canvas[:, :pattern_width_pixels]
+            )
+
+        # Fill remainder of last column.
+        if remainder_horizontal_pixels > 0:
+            canvas[:, -remainder_horizontal_pixels:] = canvas[
+                :, :remainder_horizontal_pixels
+            ]
+
+        return canvas
 
     @staticmethod
     def transfer_lighting_and_shadows(
