@@ -11,7 +11,6 @@ from src.common import PixelPoint, WallCorners
 
 # Desired distance from the camera to the initial point on the top-right line
 INITIAL_DISTANCE = 5
-BLENDER_FILE_PATH = Path("./src/rendering/render_wall_with_material.blend")
 
 
 def calculate_point_on_line(
@@ -86,6 +85,7 @@ def setup_scene(
     scene = bpy.context.scene
     scene.render.resolution_x = source_image.width
     scene.render.resolution_y = source_image.height
+    scene.render.resolution_percentage = 200
 
     # Apply HDRI.
     world = bpy.context.scene.world
@@ -231,21 +231,29 @@ def apply_material(material_name: str = "Poliigon_BrickReclaimedRunning_7787") -
     )
 
 
-def render_scene() -> None:
+def render_scene(save_path: Path) -> None:
     bpy.context.scene.render.image_settings.file_format = "PNG"
-    bpy.context.scene.render.filepath = str(Path("./temp/output.png").resolve())
+    bpy.context.scene.render.filepath = str(save_path.resolve())
     bpy.ops.render.render(write_still=True)
-    print("rendered!")
 
 
 def estimate_wall_and_render_material(
-    source_image_path: Path, hdri_path: Path, wall_corners_pixels: WallCorners
+    blender_scene_path: Path,
+    source_image_path: Path,
+    hdri_path: Path,
+    save_path: Path,
+    wall_corners_pixels: WallCorners,
 ) -> None:
-    bpy.ops.wm.open_mainfile(filepath=str(BLENDER_FILE_PATH.resolve()))
+    bpy.ops.wm.open_mainfile(filepath=str(blender_scene_path.resolve()))
 
-    setup_scene(source_image_path, hdri_path)
-    setup_plane(wall_corners_pixels)
-    render_scene()
+    # ! TODO: Sometimes the plane isn't placed immediately correctly, and requires a
+    # ! retry to apply it correctly. Very weird bug but for now just temporarily run
+    # ! the placing algo twice.
+    for _ in range(2):
+        setup_scene(source_image_path, hdri_path)
+        setup_plane(wall_corners_pixels)
+    render_scene(save_path)
+
     bpy.ops.wm.quit_blender()
 
 
@@ -259,5 +267,9 @@ if __name__ == "__main__":
 
     source_image_path = Path("./data/0a578e8af1642d0c1e715aaa04478858ac0aab01.jpg")
     hdri_path = Path("./temp/test.exr")
+    blender_scene_path = Path("./src/rendering/render_wall_with_material.blend")
+    save_path = Path("./temp/final.png")
 
-    estimate_wall_and_render_material(source_image_path, hdri_path, wall_corners_pixels)
+    estimate_wall_and_render_material(
+        blender_scene_path, source_image_path, hdri_path, save_path, wall_corners_pixels
+    )

@@ -1,3 +1,5 @@
+import os
+import shutil
 from pathlib import Path
 from typing import Type
 
@@ -6,11 +8,13 @@ import numpy as np
 from cv2.typing import MatLike
 from PIL import Image as PILImage
 
+from constants import BLENDER_SCENE_PATH, TEMP_PATH
 from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
 from src.interfaces import IlluminationEstimator, RoomLayoutEstimator, WallSegmenter
 from src.models.illumination_estimation import DualStyleGANIlluminationEstimator
 from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
 from src.models.wall_segmentation import EncoderDecoderPPMWallSegmenter
+from src.rendering import estimate_wall_and_render_material
 
 
 class SurfacePreviewer:
@@ -48,10 +52,10 @@ class SurfacePreviewer:
         )
 
         output_image = room_image_cv2
-        room_layout_estimation = self.layout_estimator(room_image_pil)
+        estimate_room_layout = self.layout_estimator(room_image_pil)
 
         for selected_wall in selected_walls:
-            selected_wall_plane_mask = room_layout_estimation[selected_wall]
+            selected_wall_plane_mask = estimate_room_layout[selected_wall]
 
             wallpaper_applied_image = self.__apply_wallpaper_to_selected_wall(
                 room_image_cv2,
@@ -66,14 +70,88 @@ class SurfacePreviewer:
 
         return PILImage.fromarray(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB))
 
+    def render_and_apply_surface(
+        self,
+        room_image_pil: PILImage.Image,
+        selected_walls: set[LayoutSegmentationLabelsOnlyWalls],
+    ) -> PILImage.Image | None:
+        try:
+            os.makedirs(TEMP_PATH, exist_ok=True)
+            temp_room_image_path = TEMP_PATH / "room_image.png"
+            temp_hdri_path = TEMP_PATH / "hdri.exr"
+            temp_render_output_path = TEMP_PATH / "render_output.png"
+
+            # Creates an exr hdr panorama file.
+            self.illumination_estimator(room_image_pil, temp_hdri_path)
+
+            output_image = room_image_pil.copy()
+            room_layout_estimation = self.layout_estimator(room_image_pil)
+
+            # Temporarily save the room image for estimate_wall_and_render_material.
+            room_image_pil.save(temp_room_image_path)
+
+            for selected_wall in selected_walls:
+                selected_wall_plane_mask = room_layout_estimation[selected_wall]
+                if not (
+                    corners := self.layout_estimator.estimate_wall_corners(
+                        selected_wall_plane_mask
+                    )
+                ):
+                    continue
+
+                estimate_wall_and_render_material(
+                    BLENDER_SCENE_PATH,
+                    temp_room_image_path,
+                    temp_hdri_path,
+                    temp_render_output_path,
+                    corners,
+                )
+
+                overlay_image_pil = PILImage.open(temp_render_output_path)
+                if (
+                    overlay_applied_image := self.__apply_overlay(
+                        output_image,
+                        overlay_image_pil,
+                        selected_wall_plane_mask,
+                    )
+                ) is None:
+                    continue
+
+                output_image = overlay_applied_image
+
+        except Exception as e:
+            print(e)
+            return
+        finally:
+            # Delete temporary directory.
+            if os.path.exists(TEMP_PATH):
+                shutil.rmtree(TEMP_PATH)
+
+        return output_image
+
     def __apply_overlay(
         self,
         room_image_pil: PILImage.Image,
         overlay_image_pil: PILImage.Image,
-        selected_walls: set[LayoutSegmentationLabelsOnlyWalls],
-    ) -> PILImage.Image:
+        selected_wall_plane_mask: MatLike,
+        transfer_local_highlights: bool = True,
+    ) -> PILImage.Image | None:
         """Applies an overlay image over a source room image for chosen walls."""
         room_image_pil_resized = room_image_pil.resize(overlay_image_pil.size)
+        selected_wall_plane_mask_resized = cv2.resize(
+            selected_wall_plane_mask.astype(np.uint8), overlay_image_pil.size
+        )
+
+        if not (
+            quadrilateral_plane := (
+                self.layout_estimator.quadrilateral_plane(
+                    selected_wall_plane_mask_resized
+                )
+            )
+        ):
+            return
+
+        quadrilateral_plane_mask, _ = quadrilateral_plane
 
         segmented_wall_mask = self.wall_segmenter(room_image_pil_resized).astype(
             np.uint8
@@ -85,46 +163,26 @@ class SurfacePreviewer:
         )
         overlay_image_cv2 = cv2.cvtColor(np.array(overlay_image_pil), cv2.COLOR_RGB2BGR)
 
-        all_selected_wall_plane_mask = np.zeros(
-            segmented_wall_mask.shape, dtype=np.uint8
+        mask = cv2.bitwise_and(
+            quadrilateral_plane_mask,
+            segmented_wall_mask,
         )
-        room_layout_estimation = self.layout_estimator(room_image_pil_resized)
-        for selected_wall in selected_walls:
-            selected_wall_plane_mask = room_layout_estimation[selected_wall]
 
-            if not (
-                quadrilateral_plane := (
-                    self.layout_estimator.quadrilateral_plane(
-                        selected_wall_plane_mask,
-                        mask_shape=(room_image_cv2.shape[0], room_image_cv2.shape[1]),
-                    )
-                )
-            ):
-                continue
-
-            quadrilateral_plane_mask, _ = quadrilateral_plane
-            all_selected_wall_plane_mask = cv2.bitwise_or(
-                all_selected_wall_plane_mask, quadrilateral_plane_mask.astype(np.uint8)
+        if transfer_local_highlights:
+            overlay_image_cv2 = self.transfer_lighting_and_shadows(
+                room_image_cv2,
+                mask,
+                overlay_image_cv2,
             )
-
-        mask = cv2.bitwise_and(all_selected_wall_plane_mask, segmented_wall_mask)
-
-        blended_overlay = self.transfer_lighting_and_shadows(
-            room_image_cv2,
-            mask,
-            overlay_image_cv2,
-        )
 
         output_image = room_image_cv2.copy()
         cv2.copyTo(
-            blended_overlay,
+            overlay_image_cv2,
             mask,
             output_image,
         )
 
-        return PILImage.fromarray(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)).resize(
-            (room_image_pil.width, room_image_pil.height),
-        )
+        return PILImage.fromarray(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB))
 
     def __apply_wallpaper_to_selected_wall(
         self,
@@ -136,10 +194,7 @@ class SurfacePreviewer:
         """Transforms and applies a wallpaper onto a wall region in an image."""
         if not (
             quadrilateral_plane := (
-                self.layout_estimator.quadrilateral_plane(
-                    selected_wall_plane_mask,
-                    mask_shape=(room_image_cv2.shape[0], room_image_cv2.shape[1]),
-                )
+                self.layout_estimator.quadrilateral_plane(selected_wall_plane_mask)
             )
         ):
             return
@@ -218,9 +273,8 @@ class SurfacePreviewer:
 
 if __name__ == "__main__":
     previewer = SurfacePreviewer()
-    wallpaper_applied = previewer.__apply_overlay(
-        PILImage.open(Path("./data/0a578e8af1642d0c1e715aaa04478858ac0aab01.jpg")),
-        PILImage.open(Path("./temp/output.png")),
+    if surface_applied := previewer.render_and_apply_surface(
+        PILImage.open(Path("./data/1a98599d3f7d168f2cf53e64ad1dd5c6e95e1b64.jpg")),
         set(LayoutSegmentationLabels.walls()),
-    )
-    wallpaper_applied.save("./temp/final.png")
+    ):
+        surface_applied.save("./output/final.png")

@@ -31,7 +31,6 @@ class RoomLayoutEstimator(ABC):
     @staticmethod
     def quadrilateral_plane(
         selected_wall_plane_mask: np.ndarray,
-        mask_shape: tuple[int, int],
     ) -> tuple[MatLike, np.ndarray] | None:
         if not (
             wall_corners := RoomLayoutEstimator.estimate_wall_corners(
@@ -45,7 +44,7 @@ class RoomLayoutEstimator(ABC):
         )
 
         # Create a mask for blending.
-        mask = np.zeros(mask_shape, dtype=np.uint8)
+        mask = np.zeros_like(selected_wall_plane_mask, dtype=np.uint8)
         cv2.fillPoly(mask, [corner_coords.astype(np.int32)], 1)
 
         return mask, corner_coords
@@ -107,8 +106,8 @@ class RoomLayoutEstimator(ABC):
         )
 
         return WallCorners(
-            bottom_left=corners_ordered[0],
-            bottom_right=corners_ordered[1],
-            top_right=corners_ordered[2],
-            top_left=corners_ordered[3],
+            top_left=corners_ordered[0],
+            top_right=corners_ordered[1],
+            bottom_right=corners_ordered[2],
+            bottom_left=corners_ordered[3],
         )

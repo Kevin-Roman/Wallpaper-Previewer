@@ -7,6 +7,7 @@ import torch
 # General
 TORCH_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 TEMP_PATH = Path("./temp/")
+BLENDER_SCENE_PATH = Path("./src/rendering/render_wall_with_material.blend")
 
 # Room Layout Estimation
 ARC_LENGTH_DEVIATION_TOLERANCE = 0.03
