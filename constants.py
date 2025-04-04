@@ -10,7 +10,7 @@ TEMP_PATH = Path("./temp/")
 BLENDER_SCENE_PATH = Path("./src/rendering/render_wall_with_material.blend")
 
 # Room Layout Estimation
-ARC_LENGTH_DEVIATION_TOLERANCE = 0.03
+ARC_LENGTH_DEVIATION_TOLERANCE = 0.06
 # FCN Layout Augmentation
 FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_IMAGENET_MEAN = np.array(
     [0.485, 0.456, 0.406], dtype=np.float32

@@ -18,7 +18,7 @@ class RenderingMode(ctk.CTk):
 
         # Setup.
         self.title("Surface Previewer")
-        self.geometry("800x800")
+        self.geometry("800x1400")
 
         # Image upload buttons.
         self.upload_room_button = ctk.CTkButton(
@@ -99,8 +99,8 @@ class RenderingMode(ctk.CTk):
         result_display = ctk.CTkImage(
             self.output_image,
             size=(
-                int(self.output_image.width * (200 / self.output_image.height)),
-                200,
+                int(self.output_image.width * (500 / self.output_image.height)),
+                500,
             ),
         )
         self.result_label.configure(image=result_display, text="")

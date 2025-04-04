@@ -85,7 +85,7 @@ def setup_scene(
     scene = bpy.context.scene
     scene.render.resolution_x = source_image.width
     scene.render.resolution_y = source_image.height
-    scene.render.resolution_percentage = 200
+    scene.render.resolution_percentage = 100
 
     # Apply HDRI.
     world = bpy.context.scene.world

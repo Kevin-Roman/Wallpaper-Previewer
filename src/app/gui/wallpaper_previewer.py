@@ -18,7 +18,7 @@ class WallpaperMode(ctk.CTk):
 
         # Setup.
         self.title("Wallpaper Previewer")
-        self.geometry("800x800")
+        self.geometry("1400x1400")
 
         # Image upload buttons.
         self.upload_room_button = ctk.CTkButton(
@@ -103,8 +103,8 @@ class WallpaperMode(ctk.CTk):
         image_display = ctk.CTkImage(
             self.wallpaper_image,
             size=(
+                int(self.wallpaper_image.width * (200 / self.wallpaper_image.height)),
                 200,
-                int(self.wallpaper_image.height * (200 / self.wallpaper_image.width)),
             ),
         )
         self.wallpaper_label.configure(image=image_display, text="")
@@ -127,8 +127,8 @@ class WallpaperMode(ctk.CTk):
         result_display = ctk.CTkImage(
             self.output_image,
             size=(
-                int(self.output_image.width * (200 / self.output_image.height)),
-                200,
+                int(self.output_image.width * (500 / self.output_image.height)),
+                500,
             ),
         )
         self.result_label.configure(image=result_display, text="")

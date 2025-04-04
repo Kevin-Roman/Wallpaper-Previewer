@@ -9,7 +9,7 @@ from cv2.typing import MatLike
 from PIL import Image as PILImage
 
 from constants import BLENDER_SCENE_PATH, TEMP_PATH
-from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
+from src.common import LayoutSegmentationLabelsOnlyWalls
 from src.interfaces import IlluminationEstimator, RoomLayoutEstimator, WallSegmenter
 from src.models.illumination_estimation import DualStyleGANIlluminationEstimator
 from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
@@ -46,6 +46,9 @@ class SurfacePreviewer:
         image to the quadrilateral-shaped wall, and masking out the non-wall detected
         elements/pixels.
         """
+        # Resize to specific target side length as some models (e.g. wall segmenter)
+        # perform best at lower resolutions.
+        room_image_pil = self.standardise_image_dimensions(room_image_pil)
 
         segmented_wall_mask = self.wall_segmenter(room_image_pil).astype(np.uint8)
 
@@ -79,6 +82,8 @@ class SurfacePreviewer:
         room_image_pil: PILImage.Image,
         selected_walls: set[LayoutSegmentationLabelsOnlyWalls],
     ) -> PILImage.Image | None:
+        room_image_pil = self.standardise_image_dimensions(room_image_pil)
+
         try:
             os.makedirs(TEMP_PATH, exist_ok=True)
             temp_room_image_path = TEMP_PATH / "room_image.png"
@@ -353,11 +358,21 @@ class SurfacePreviewer:
 
         return target_with_overlaid_lighting
 
+    @staticmethod
+    def standardise_image_dimensions(
+        image: PILImage.Image, target_longest_size_px: int = 1_500
+    ) -> PILImage.Image:
+        """Standardises the dimensions of an image to a target size for it's longest
+        dimension."""
+        width, height = image.size
+
+        scale_factor = target_longest_size_px / max(width, height)
+
+        new_width = int(width * scale_factor)
+        new_height = int(height * scale_factor)
+
+        return image.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+
 
 if __name__ == "__main__":
     previewer = SurfacePreviewer()
-    if surface_applied := previewer.render_and_apply_surface(
-        PILImage.open(Path("./data/1a98599d3f7d168f2cf53e64ad1dd5c6e95e1b64.jpg")),
-        set(LayoutSegmentationLabels.walls()),
-    ):
-        surface_applied.save("./output/final.png")
