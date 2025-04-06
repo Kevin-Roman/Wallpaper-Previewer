@@ -77,7 +77,7 @@ class SurfacePreviewer:
 
         return PILImage.fromarray(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB))
 
-    def render_and_apply_surface(
+    def apply_and_render_texture(
         self,
         room_image_pil: PILImage.Image,
         selected_walls: set[LayoutSegmentationLabelsOnlyWalls],

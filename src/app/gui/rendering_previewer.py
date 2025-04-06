@@ -91,7 +91,7 @@ class RenderingMode(ctk.CTk):
         self.progress_bar.set(0)
         self.update_idletasks()
 
-        self.output_image = self.surface_previewer.render_and_apply_surface(
+        self.output_image = self.surface_previewer.apply_and_render_texture(
             self.room_image, self.selected_walls
         )
         self.progress_bar.set(1)
