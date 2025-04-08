@@ -6,7 +6,7 @@ import numpy as np
 
 
 class LayoutSegmentationLabels(IntEnum):
-    WALL_CENTER = 0
+    WALL_CENTRE = 0
     WALL_LEFT = 1
     WALL_RIGHT = 2
     FLOOR = 3
@@ -20,11 +20,11 @@ class LayoutSegmentationLabels(IntEnum):
         "LayoutSegmentationLabelsOnlyWalls",
         "LayoutSegmentationLabelsOnlyWalls",
     ]:
-        return cls.WALL_CENTER, cls.WALL_LEFT, cls.WALL_RIGHT
+        return cls.WALL_CENTRE, cls.WALL_LEFT, cls.WALL_RIGHT
 
 
 LayoutSegmentationLabelsOnlyWalls = Literal[
-    LayoutSegmentationLabels.WALL_CENTER,
+    LayoutSegmentationLabels.WALL_CENTRE,
     LayoutSegmentationLabels.WALL_LEFT,
     LayoutSegmentationLabels.WALL_RIGHT,
 ]

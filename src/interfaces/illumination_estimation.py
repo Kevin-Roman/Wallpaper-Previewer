@@ -23,7 +23,7 @@ class IlluminationEstimator(ABC):
         The image is saved to the specified path and as a `.exr` file.
         """
         os.makedirs(TEMP_PATH, exist_ok=True)
-        if (hdr_panorama := self._generate_hdr_panorama(image)) is None:
+        if (hdr_panorama := self.__generate_hdr_panorama(image)) is None:
             raise RuntimeError("Failed to generate HDR panorama.")
 
         hdr_panorama_warped = warp_hdr_panorama(hdr_panorama)
@@ -33,7 +33,7 @@ class IlluminationEstimator(ABC):
         hdrio.imsave(str(save_path.resolve()), hdr_panorama_tonemapped)
 
     @abstractmethod
-    def _generate_hdr_panorama(self, image: PILImage.Image) -> np.ndarray | None:
+    def __generate_hdr_panorama(self, image: PILImage.Image) -> np.ndarray | None:
         """Estimates a HDR panorama from a single LDR low-FOV image. This image can be
         used for lighting of 3D scenes.
         """

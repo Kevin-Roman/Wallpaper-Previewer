@@ -136,13 +136,15 @@ class WallpaperPreviewer(SurfacePreviewer):
     ) -> MatLike | None:
         """Transforms and applies a wallpaper onto a wall region in an image."""
         if not (
-            quadrilateral_plane := (
-                self.room_layout_estimator.quadrilateral_plane(selected_wall_plane_mask)
+            estimate_quadrilateral := (
+                self.room_layout_estimator.estimate_quadrilateral(
+                    selected_wall_plane_mask
+                )
             )
         ):
             return
 
-        quadrilateral_plane_mask, corner_coords = quadrilateral_plane
+        estimate_quadrilateral_mask, corner_coords = estimate_quadrilateral
 
         # Determine the width and height of the bounding box of the quadrilateral of
         # the wall.
@@ -165,14 +167,14 @@ class WallpaperPreviewer(SurfacePreviewer):
             ((0, 0), (width, 0), (width, height), (0, height)), dtype=np.float32
         )
 
-        perspective_warp_transformation = cv2.getPerspectiveTransform(
-            src_coords, corner_coords
-        )
-
         tiled_wallpaper = self.__fill_rectangle_with_pattern(
             wallpaper_image_cv2,
             width,
             height,
+        )
+
+        perspective_warp_transformation = cv2.getPerspectiveTransform(
+            src_coords, corner_coords
         )
 
         warped_wallpaper = cv2.warpPerspective(
@@ -182,7 +184,7 @@ class WallpaperPreviewer(SurfacePreviewer):
         )
 
         combined_mask = cv2.bitwise_and(
-            quadrilateral_plane_mask, segmented_wall_mask
+            estimate_quadrilateral_mask, segmented_wall_mask
         ).astype(np.uint8)
 
         if transfer_local_highlights:
@@ -353,15 +355,15 @@ class TexturePreviewer(SurfacePreviewer):
         )
 
         if not (
-            quadrilateral_plane := (
-                self.room_layout_estimator.quadrilateral_plane(
+            estimate_quadrilateral := (
+                self.room_layout_estimator.estimate_quadrilateral(
                     selected_wall_plane_mask_resized
                 )
             )
         ):
             return
 
-        quadrilateral_plane_mask, _ = quadrilateral_plane
+        quadrilateral_plane_mask, _ = estimate_quadrilateral
 
         segmented_wall_mask = self.wall_segmenter(room_image_pil_resized).astype(
             np.uint8

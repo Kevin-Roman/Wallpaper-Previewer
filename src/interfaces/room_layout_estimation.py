@@ -29,32 +29,13 @@ class RoomLayoutEstimator(ABC):
         pass
 
     @staticmethod
-    def quadrilateral_plane(
-        selected_wall_plane_mask: MatLike,
-    ) -> tuple[MatLike, np.ndarray] | None:
-        if not (
-            wall_corners := RoomLayoutEstimator.estimate_wall_corners(
-                selected_wall_plane_mask
-            )
-        ):
-            return
-
-        corner_coords = (
-            wall_corners.get_corners_clockwise_from_second_quadrant().astype(np.float32)
-        )
-
-        # Create a mask for blending.
-        mask = np.zeros_like(selected_wall_plane_mask, dtype=np.uint8)
-        cv2.fillPoly(mask, [corner_coords.astype(np.int32)], 1)
-
-        return mask, corner_coords
-
-    @staticmethod
     def estimate_wall_corners(mask: MatLike) -> WallCorners | None:
         """Finds the corners of the wall in a boolean mask.
 
         Assumes that the wall is the largest closed quadrilateral in the mask.
         """
+        assert mask.dtype == bool
+
         # Convert to an image so that it can be passed through cv2 functions.
         image = mask.astype(np.uint8) * 255
 
@@ -87,20 +68,19 @@ class RoomLayoutEstimator(ABC):
 
         # Reshape into columns of (x, y), and then swap to be (y, x).
         corners = tuple(
-            PixelPoint(row=pair[1], col=pair[0]) for pair in polygon.reshape(-1, 2)
+            PixelPoint(row=corner[1], col=corner[0])
+            for corner in polygon.reshape(-1, 2)
         )
 
-        center = PixelPoint(
-            row=np.mean([corner.row for corner in corners]),
-            col=np.mean([corner.col for corner in corners]),
-        )
+        centre_point_row = np.mean([corner.row for corner in corners])
+        centre_point_col = np.mean([corner.col for corner in corners])
 
-        # Order the corners based on angle between the center and the corner
+        # Order the corners based on angle between the centre and the corner
         # (unit circle [-pi, pi])
         corners_ordered = sorted(
             corners,
             key=lambda corner: np.arctan2(
-                corner.row - center.row, corner.col - center.col
+                corner.row - centre_point_row, corner.col - centre_point_col
             ),
         )
 
@@ -110,3 +90,24 @@ class RoomLayoutEstimator(ABC):
             bottom_right=corners_ordered[2],
             bottom_left=corners_ordered[3],
         )
+
+    @staticmethod
+    def estimate_quadrilateral(
+        selected_wall_plane_mask: MatLike,
+    ) -> tuple[MatLike, np.ndarray] | None:
+        if not (
+            wall_corners := RoomLayoutEstimator.estimate_wall_corners(
+                selected_wall_plane_mask
+            )
+        ):
+            return
+
+        corner_coords = (
+            wall_corners.get_corners_clockwise_from_second_quadrant().astype(np.float32)
+        )
+
+        # Create a mask for blending.
+        mask = np.zeros_like(selected_wall_plane_mask, dtype=np.uint8)
+        cv2.fillPoly(mask, [corner_coords.astype(np.int32)], 1)
+
+        return mask, corner_coords

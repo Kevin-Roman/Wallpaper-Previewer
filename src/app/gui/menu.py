@@ -4,7 +4,7 @@ from .rendering_mode import RenderingMode
 from .wallpaper_mode import WallpaperMode
 from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
 from src.models.wall_segmentation import EncoderDecoderPPMWallSegmenter
-from app.surface_previewer import WallpaperPreviewer, TexturePreviewer
+from src.app.surface_previewer import WallpaperPreviewer, TexturePreviewer
 
 
 class MainMenu(ctk.CTk):

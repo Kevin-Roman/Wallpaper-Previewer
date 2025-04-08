@@ -181,7 +181,7 @@ def setup_plane(wall_corners_pixels: WallCorners) -> None:
         Vector((x2, y2, z3)),  # Bottom left.
         Vector((x1, y1, z3)),  # Bottom right.
     ]
-    plane_center = reduce(add, world_wall_corners) / 4
+    plane_centre = reduce(add, world_wall_corners) / 4
 
     bpy.ops.object.select_all(action="DESELECT")
 
@@ -193,8 +193,8 @@ def setup_plane(wall_corners_pixels: WallCorners) -> None:
     bpy.context.view_layer.objects.active = plane
     plane.select_set(True)
 
-    # Update the plane's center in world space.
-    plane.location = plane_center
+    # Update the plane's centre in world space.
+    plane.location = plane_centre
 
     # Update global space determine coordinates to local space.
     plane_inverse_world_matrix = plane.matrix_world.inverted()

@@ -198,7 +198,7 @@ class EnvironmentMap:
         omega = tetrahedronSolidAngle(a, b, c)
         omega += tetrahedronSolidAngle(b, c, d)
 
-        # Get pixel center coordinates
+        # Get pixel centre coordinates
         _, _, _, valid = self.worldCoordinates()
         omega[~valid.ravel()] = np.nan
 
@@ -207,7 +207,7 @@ class EnvironmentMap:
         return self._solidAngles
 
     def imageCoordinates(self):
-        """Returns the (u, v) coordinates for each pixel center."""
+        """Returns the (u, v) coordinates for each pixel centre."""
         cols = np.linspace(0, 1, self.data.shape[1] * 2 + 1)
         rows = np.linspace(0, 1, self.data.shape[0] * 2 + 1)
 
@@ -217,7 +217,7 @@ class EnvironmentMap:
         return [d.astype("float32") for d in np.meshgrid(cols, rows)]
 
     def worldCoordinates(self):
-        """Returns the (x, y, z) world coordinates for each pixel center."""
+        """Returns the (x, y, z) world coordinates for each pixel centre."""
         u, v = self.imageCoordinates()
         x, y, z, valid = self.image2world(u, v)
         return x, y, z, valid

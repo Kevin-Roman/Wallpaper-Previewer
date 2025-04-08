@@ -5,7 +5,7 @@ from PIL import Image as PILImage
 
 from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
 
-from app.surface_previewer import TexturePreviewer
+from src.app.surface_previewer import TexturePreviewer
 
 
 class RenderingMode(ctk.CTk):
