@@ -12,7 +12,7 @@ class WallSegmenter(ABC):
         self,
         image: PILImage.Image,
     ) -> MatLike:
-        """Classifies pixels of image into either wal or no-wall.
+        """Classifies pixels of image into either wall or no-wall.
 
         Returns a bool mask where True represents pixels that are considered walls."""
         pass

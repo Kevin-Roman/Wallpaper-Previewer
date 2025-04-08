@@ -18,7 +18,7 @@ class RoomLayoutEstimator(ABC):
     @abstractmethod
     def __call__(
         self, image: PILImage.Image
-    ) -> dict[LayoutSegmentationLabelsOnlyWalls, np.ndarray]:
+    ) -> dict[LayoutSegmentationLabelsOnlyWalls, MatLike]:
         """Estimates the layout of the room using the given predictor.
 
         Returns a dictionary mapping the wall label to the corresponding boolean
@@ -30,7 +30,7 @@ class RoomLayoutEstimator(ABC):
 
     @staticmethod
     def quadrilateral_plane(
-        selected_wall_plane_mask: np.ndarray,
+        selected_wall_plane_mask: MatLike,
     ) -> tuple[MatLike, np.ndarray] | None:
         if not (
             wall_corners := RoomLayoutEstimator.estimate_wall_corners(
@@ -97,7 +97,6 @@ class RoomLayoutEstimator(ABC):
 
         # Order the corners based on angle between the center and the corner
         # (unit circle [-pi, pi])
-        # ! TODO: fix the ordering of the corners
         corners_ordered = sorted(
             corners,
             key=lambda corner: np.arctan2(

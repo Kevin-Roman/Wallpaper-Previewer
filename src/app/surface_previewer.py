@@ -1,7 +1,6 @@
 import os
 import shutil
-from pathlib import Path
-from typing import Type
+from abc import ABC, abstractmethod
 
 import cv2
 import numpy as np
@@ -17,31 +16,81 @@ from src.models.wall_segmentation import EncoderDecoderPPMWallSegmenter
 from src.rendering import estimate_wall_and_render_material
 
 
-class SurfacePreviewer:
+class SurfacePreviewer(ABC):
     def __init__(
         self,
-        room_layout_estimator: Type[
-            RoomLayoutEstimator
-        ] = FCNAugmentedRoomLayoutEstimator,
-        wall_segmenter: Type[WallSegmenter] = EncoderDecoderPPMWallSegmenter,
-        illumination_estimator: Type[
-            IlluminationEstimator
-        ] = DualStyleGANIlluminationEstimator,
+        room_layout_estimator: RoomLayoutEstimator = FCNAugmentedRoomLayoutEstimator(),
+        wall_segmenter: WallSegmenter = EncoderDecoderPPMWallSegmenter(),
     ) -> None:
-        self.layout_estimator = room_layout_estimator()
-        self.wall_segmenter = wall_segmenter()
-        self.illumination_estimator = illumination_estimator()
+        self.room_layout_estimator = room_layout_estimator
+        self.wall_segmenter = wall_segmenter
+
+    @abstractmethod
+    def __call__(self, *args, **kwargs) -> PILImage.Image | None:
+        """Abstract method to be implemented by subclasses."""
+        pass
+
+    @staticmethod
+    def transfer_lighting_and_shadows(
+        source_image: MatLike, mask: MatLike, target_image: MatLike
+    ) -> MatLike:
+        """Extracts lighting/shadows from source image and overlays them over the target
+        image.
+        """
+        # Calculate the base colour of the selected area from the source image.
+        base_colour = cv2.mean(source_image, mask=mask)
+
+        # Remove base colour from the selected area in the image.
+        # This should extract the local lightings and shadows.
+        extracted_lighting = cv2.subtract(
+            source_image, np.array(base_colour, dtype=np.uint8)
+        )
+
+        # Apply the extracted shadow and lighting on top of the overlay.
+        target_with_overlaid_lighting = cv2.addWeighted(
+            target_image, 1, extracted_lighting, 1, 0
+        )
+        # Remove non mask areas from the overlay with lighting applied image.
+        target_with_overlaid_lighting = cv2.bitwise_and(
+            target_with_overlaid_lighting, target_with_overlaid_lighting, mask=mask
+        )
+
+        return target_with_overlaid_lighting
+
+    @staticmethod
+    def standardise_image_dimensions(
+        image: PILImage.Image, target_longest_size_px: int = 1_500
+    ) -> PILImage.Image:
+        """Standardises the dimensions of an image to a target size for it's longest
+        dimension."""
+        width, height = image.size
+
+        scale_factor = target_longest_size_px / max(width, height)
+
+        new_width = int(width * scale_factor)
+        new_height = int(height * scale_factor)
+
+        return image.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+
+
+class WallpaperPreviewer(SurfacePreviewer):
+    def __init__(
+        self,
+        room_layout_estimator: RoomLayoutEstimator = FCNAugmentedRoomLayoutEstimator(),
+        wall_segmenter: WallSegmenter = EncoderDecoderPPMWallSegmenter(),
+    ) -> None:
+        super().__init__(room_layout_estimator, wall_segmenter)
 
         self.pattern_height_m = 2.0
         self.wall_height_m = 2.0
         self.wall_width_m: float | None = None
 
-    def apply_wallpaper(
+    def __call__(
         self,
         room_image_pil: PILImage.Image,
         wallpaper_image_pil: PILImage.Image,
         selected_walls: set[LayoutSegmentationLabelsOnlyWalls],
-    ) -> PILImage.Image:
+    ) -> PILImage.Image | None:
         """Applies a wallpaper to the selected walls, perspective warping the wallpaper
         image to the quadrilateral-shaped wall, and masking out the non-wall detected
         elements/pixels.
@@ -59,7 +108,7 @@ class SurfacePreviewer:
         )
 
         output_image = room_image_cv2
-        estimate_room_layout = self.layout_estimator(room_image_pil)
+        estimate_room_layout = self.room_layout_estimator(room_image_pil)
 
         for selected_wall in selected_walls:
             selected_wall_plane_mask = estimate_room_layout[selected_wall]
@@ -77,122 +126,6 @@ class SurfacePreviewer:
 
         return PILImage.fromarray(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB))
 
-    def apply_and_render_texture(
-        self,
-        room_image_pil: PILImage.Image,
-        selected_walls: set[LayoutSegmentationLabelsOnlyWalls],
-    ) -> PILImage.Image | None:
-        room_image_pil = self.standardise_image_dimensions(room_image_pil)
-
-        try:
-            os.makedirs(TEMP_PATH, exist_ok=True)
-            temp_room_image_path = TEMP_PATH / "room_image.png"
-            temp_hdri_path = TEMP_PATH / "hdri.exr"
-            temp_render_output_path = TEMP_PATH / "render_output.png"
-
-            # Creates an exr hdr panorama file.
-            self.illumination_estimator(room_image_pil, temp_hdri_path)
-
-            output_image = room_image_pil.copy()
-            room_layout_estimation = self.layout_estimator(room_image_pil)
-
-            # Temporarily save the room image for estimate_wall_and_render_material.
-            room_image_pil.save(temp_room_image_path)
-
-            for selected_wall in selected_walls:
-                selected_wall_plane_mask = room_layout_estimation[selected_wall]
-                if not (
-                    corners := self.layout_estimator.estimate_wall_corners(
-                        selected_wall_plane_mask
-                    )
-                ):
-                    continue
-
-                estimate_wall_and_render_material(
-                    BLENDER_SCENE_PATH,
-                    temp_room_image_path,
-                    temp_hdri_path,
-                    temp_render_output_path,
-                    corners,
-                )
-
-                overlay_image_pil = PILImage.open(temp_render_output_path)
-                if (
-                    overlay_applied_image := self.__apply_overlay(
-                        output_image,
-                        overlay_image_pil,
-                        selected_wall_plane_mask,
-                    )
-                ) is None:
-                    continue
-
-                output_image = overlay_applied_image
-
-        except Exception as e:
-            print(e)
-            return
-        finally:
-            # Delete temporary directory.
-            if os.path.exists(TEMP_PATH):
-                shutil.rmtree(TEMP_PATH)
-
-        return output_image
-
-    def __apply_overlay(
-        self,
-        room_image_pil: PILImage.Image,
-        overlay_image_pil: PILImage.Image,
-        selected_wall_plane_mask: MatLike,
-        transfer_local_highlights: bool = True,
-    ) -> PILImage.Image | None:
-        """Applies an overlay image over a source room image for chosen walls."""
-        room_image_pil_resized = room_image_pil.resize(overlay_image_pil.size)
-        selected_wall_plane_mask_resized = cv2.resize(
-            selected_wall_plane_mask.astype(np.uint8), overlay_image_pil.size
-        )
-
-        if not (
-            quadrilateral_plane := (
-                self.layout_estimator.quadrilateral_plane(
-                    selected_wall_plane_mask_resized
-                )
-            )
-        ):
-            return
-
-        quadrilateral_plane_mask, _ = quadrilateral_plane
-
-        segmented_wall_mask = self.wall_segmenter(room_image_pil_resized).astype(
-            np.uint8
-        )
-
-        # CV2 uses BGR whilst PIL use RGB. Therefore, convert RGB images to BGR.
-        room_image_cv2 = cv2.cvtColor(
-            np.array(room_image_pil_resized), cv2.COLOR_RGB2BGR
-        )
-        overlay_image_cv2 = cv2.cvtColor(np.array(overlay_image_pil), cv2.COLOR_RGB2BGR)
-
-        mask = cv2.bitwise_and(
-            quadrilateral_plane_mask,
-            segmented_wall_mask,
-        )
-
-        if transfer_local_highlights:
-            overlay_image_cv2 = self.transfer_lighting_and_shadows(
-                room_image_cv2,
-                mask,
-                overlay_image_cv2,
-            )
-
-        output_image = room_image_cv2.copy()
-        cv2.copyTo(
-            overlay_image_cv2,
-            mask,
-            output_image,
-        )
-
-        return PILImage.fromarray(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB))
-
     def __apply_wallpaper_to_selected_wall(
         self,
         room_image_cv2: MatLike,
@@ -204,7 +137,7 @@ class SurfacePreviewer:
         """Transforms and applies a wallpaper onto a wall region in an image."""
         if not (
             quadrilateral_plane := (
-                self.layout_estimator.quadrilateral_plane(selected_wall_plane_mask)
+                self.room_layout_estimator.quadrilateral_plane(selected_wall_plane_mask)
             )
         ):
             return
@@ -225,6 +158,7 @@ class SurfacePreviewer:
                 np.linalg.norm(corner_coords[3] - corner_coords[0]),
             )
         )
+        # TODO: maybe simplify the above using
 
         # Define the source quadrilateral for the perspective warp.
         src_coords = np.array(
@@ -332,47 +266,134 @@ class SurfacePreviewer:
 
         return canvas
 
-    @staticmethod
-    def transfer_lighting_and_shadows(
-        source_image: MatLike, mask: MatLike, target_image: MatLike
-    ) -> MatLike:
-        """Extracts lighting/shadows from source image and overlays them over the target
-        image.
-        """
-        # Calculate the base colour of the selected area from the source image.
-        base_color = cv2.mean(source_image, mask=mask)
-        base_color_bgr = np.array(base_color, dtype=np.uint8)
 
-        # Remove base color from the selected area in the image.
-        # This should extract the local lightings and shadows.
-        extracted_lighting = cv2.subtract(source_image, base_color_bgr)
+class TexturePreviewer(SurfacePreviewer):
+    def __init__(
+        self,
+        room_layout_estimator: RoomLayoutEstimator = FCNAugmentedRoomLayoutEstimator(),
+        wall_segmenter: WallSegmenter = EncoderDecoderPPMWallSegmenter(),
+        illumination_estimator: IlluminationEstimator = DualStyleGANIlluminationEstimator(),
+    ):
+        super().__init__(room_layout_estimator, wall_segmenter)
 
-        # Apply the extracted shadow and lighting on top of the overlay.
-        target_with_overlaid_lighting = cv2.addWeighted(
-            target_image, 1, extracted_lighting, 1, 0
+        self.illumination_estimator = illumination_estimator
+
+    def __call__(
+        self,
+        room_image_pil: PILImage.Image,
+        selected_walls: set[LayoutSegmentationLabelsOnlyWalls],
+    ) -> PILImage.Image | None:
+        room_image_pil = self.standardise_image_dimensions(room_image_pil)
+
+        try:
+            os.makedirs(TEMP_PATH, exist_ok=True)
+            temp_room_image_path = TEMP_PATH / "room_image.png"
+            temp_hdri_path = TEMP_PATH / "hdri.exr"
+            temp_render_output_path = TEMP_PATH / "render_output.png"
+
+            # Creates an exr hdr panorama file.
+            self.illumination_estimator(room_image_pil, temp_hdri_path)
+
+            output_image = room_image_pil.copy()
+            room_layout_estimation = self.room_layout_estimator(room_image_pil)
+
+            # Temporarily save the room image for estimate_wall_and_render_material.
+            room_image_pil.save(temp_room_image_path)
+
+            for selected_wall in selected_walls:
+                selected_wall_plane_mask = room_layout_estimation[selected_wall]
+                if not (
+                    corners := self.room_layout_estimator.estimate_wall_corners(
+                        selected_wall_plane_mask
+                    )
+                ):
+                    continue
+
+                estimate_wall_and_render_material(
+                    BLENDER_SCENE_PATH,
+                    temp_room_image_path,
+                    temp_hdri_path,
+                    temp_render_output_path,
+                    corners,
+                )
+
+                overlay_image_pil = PILImage.open(temp_render_output_path)
+                if (
+                    overlay_applied_image := self.__apply_overlay(
+                        output_image,
+                        overlay_image_pil,
+                        selected_wall_plane_mask,
+                    )
+                ) is None:
+                    continue
+
+                output_image = overlay_applied_image
+
+        except Exception as e:
+            print(e)
+            return
+        finally:
+            # Delete temporary directory.
+            if os.path.exists(TEMP_PATH):
+                shutil.rmtree(TEMP_PATH)
+
+        return output_image
+
+    def __apply_overlay(
+        self,
+        room_image_pil: PILImage.Image,
+        overlay_image_pil: PILImage.Image,
+        selected_wall_plane_mask: MatLike,
+        transfer_local_highlights: bool = True,
+    ) -> PILImage.Image | None:
+        """Applies an overlay image over a source room image for chosen walls."""
+        room_image_pil_resized = room_image_pil.resize(overlay_image_pil.size)
+        selected_wall_plane_mask_resized = cv2.resize(
+            selected_wall_plane_mask.astype(np.uint8), overlay_image_pil.size
         )
-        # Remove non mask areas from the overlay with lighting applied image.
-        target_with_overlaid_lighting = cv2.bitwise_and(
-            target_with_overlaid_lighting, target_with_overlaid_lighting, mask=mask
+
+        if not (
+            quadrilateral_plane := (
+                self.room_layout_estimator.quadrilateral_plane(
+                    selected_wall_plane_mask_resized
+                )
+            )
+        ):
+            return
+
+        quadrilateral_plane_mask, _ = quadrilateral_plane
+
+        segmented_wall_mask = self.wall_segmenter(room_image_pil_resized).astype(
+            np.uint8
         )
 
-        return target_with_overlaid_lighting
+        # CV2 uses BGR whilst PIL use RGB. Therefore, convert RGB images to BGR.
+        room_image_cv2 = cv2.cvtColor(
+            np.array(room_image_pil_resized), cv2.COLOR_RGB2BGR
+        )
+        overlay_image_cv2 = cv2.cvtColor(np.array(overlay_image_pil), cv2.COLOR_RGB2BGR)
 
-    @staticmethod
-    def standardise_image_dimensions(
-        image: PILImage.Image, target_longest_size_px: int = 1_500
-    ) -> PILImage.Image:
-        """Standardises the dimensions of an image to a target size for it's longest
-        dimension."""
-        width, height = image.size
+        mask = cv2.bitwise_and(
+            quadrilateral_plane_mask,
+            segmented_wall_mask,
+        )
 
-        scale_factor = target_longest_size_px / max(width, height)
+        if transfer_local_highlights:
+            overlay_image_cv2 = self.transfer_lighting_and_shadows(
+                room_image_cv2,
+                mask,
+                overlay_image_cv2,
+            )
 
-        new_width = int(width * scale_factor)
-        new_height = int(height * scale_factor)
+        output_image = room_image_cv2.copy()
+        cv2.copyTo(
+            overlay_image_cv2,
+            mask,
+            output_image,
+        )
 
-        return image.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+        return PILImage.fromarray(cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB))
 
 
 if __name__ == "__main__":
-    previewer = SurfacePreviewer()
+    previewer = WallpaperPreviewer()

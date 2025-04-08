@@ -5,26 +5,31 @@ from PIL import Image as PILImage
 
 from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
 
-from ..surface_previewer import SurfacePreviewer
+from app.surface_previewer import WallpaperPreviewer
 
 
-class RenderingMode(ctk.CTk):
-    def __init__(self, surface_previewer: SurfacePreviewer) -> None:
+class WallpaperMode(ctk.CTk):
+    def __init__(self, wallpaper_previewer: WallpaperPreviewer) -> None:
         super().__init__()
-        self.surface_previewer = surface_previewer
+        self.wallpaper_previewer = wallpaper_previewer
         self.room_image: PILImage.Image | None = None
         self.wallpaper_image: PILImage.Image | None = None
         self.output_image: PILImage.Image | None = None
 
         # Setup.
-        self.title("Surface Previewer")
-        self.geometry("800x1400")
+        self.title("Wallpaper Previewer")
+        self.geometry("1400x1400")
 
         # Image upload buttons.
         self.upload_room_button = ctk.CTkButton(
             self, text="Upload Room Photo", command=self.upload_room
         )
         self.upload_room_button.grid(row=0, column=0, padx=10, pady=10)
+
+        self.upload_wallpaper_button = ctk.CTkButton(
+            self, text="Upload Wallpaper", command=self.upload_wallpaper
+        )
+        self.upload_wallpaper_button.grid(row=0, column=1, padx=10, pady=10)
 
         # Checkboxes for selecting the walls to apply the wallpaper to.
         self.selected_walls: set[LayoutSegmentationLabelsOnlyWalls] = set()
@@ -49,6 +54,9 @@ class RenderingMode(ctk.CTk):
         # Uploaded image labels.
         self.room_label = ctk.CTkLabel(self, text="Room Photo")
         self.room_label.grid(row=3, column=0, padx=10, pady=10)
+
+        self.wallpaper_label = ctk.CTkLabel(self, text="Wallpaper")
+        self.wallpaper_label.grid(row=3, column=1, padx=10, pady=10)
 
         self.result_label = ctk.CTkLabel(self, text="Result Preview")
         self.result_label.grid(row=4, column=0, pady=10)
@@ -83,16 +91,36 @@ class RenderingMode(ctk.CTk):
         self.room_label.configure(image=image_display, text="")
         self.room_label.image = image_display
 
+    def upload_wallpaper(self) -> None:
+        if not (
+            file_path := filedialog.askopenfilename(
+                filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")]
+            )
+        ):
+            return
+
+        self.wallpaper_image = PILImage.open(file_path)
+        image_display = ctk.CTkImage(
+            self.wallpaper_image,
+            size=(
+                int(self.wallpaper_image.width * (200 / self.wallpaper_image.height)),
+                200,
+            ),
+        )
+        self.wallpaper_label.configure(image=image_display, text="")
+        self.wallpaper_label.image = image_display
+
     def preview_wallpaper(self) -> None:
-        if not self.room_image:
-            self.result_label.configure(text="Upload a room image first!")
+
+        if not self.room_image or not self.wallpaper_image:
+            self.result_label.configure(text="Upload both images first!")
             return
 
         self.progress_bar.set(0)
         self.update_idletasks()
 
-        self.output_image = self.surface_previewer.apply_and_render_texture(
-            self.room_image, self.selected_walls
+        self.output_image = self.wallpaper_previewer(
+            self.room_image, self.wallpaper_image, self.selected_walls
         )
         self.progress_bar.set(1)
 

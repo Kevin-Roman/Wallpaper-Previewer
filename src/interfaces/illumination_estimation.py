@@ -16,7 +16,7 @@ from external.skylibs import hdrio
 class IlluminationEstimator(ABC):
     """Base class for Illumination Estimation from a single LDR low-FOV image."""
 
-    def __call__(self, image: PILImage.Image, save_path: Path):
+    def __call__(self, image: PILImage.Image, save_path: Path) -> None:
         """Estimates a HDR panorama from a single LDR low-FOV image, warps it, and
         applies tonemapping. This image can be used for lighting of 3D scenes.
 
@@ -24,7 +24,7 @@ class IlluminationEstimator(ABC):
         """
         os.makedirs(TEMP_PATH, exist_ok=True)
         if (hdr_panorama := self._generate_hdr_panorama(image)) is None:
-            return
+            raise RuntimeError("Failed to generate HDR panorama.")
 
         hdr_panorama_warped = warp_hdr_panorama(hdr_panorama)
         hdr_panorama_tonemapped = tonemap_hdr_panorama(
