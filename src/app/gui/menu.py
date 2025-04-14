@@ -1,7 +1,7 @@
 import customtkinter as ctk
 
-from .rendering_mode import RenderingMode
-from .wallpaper_mode import WallpaperPreviewerPage
+from .texture_previewer_page import TexturePreviewerPage
+from .wallpaper_previewer_page import WallpaperPreviewerPage
 from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
 from src.models.wall_segmentation import EncoderDecoderPPMWallSegmenter
 from src.app.surface_previewer import WallpaperPreviewer, TexturePreviewer
@@ -49,7 +49,7 @@ class MainMenu(ctk.CTk):
 
     def open_rendering_previewer(self):
         self.destroy()
-        app = RenderingMode(
+        app = TexturePreviewerPage(
             TexturePreviewer(self.room_layout_estimator, self.wall_segmenter)
         )
         app.mainloop()
