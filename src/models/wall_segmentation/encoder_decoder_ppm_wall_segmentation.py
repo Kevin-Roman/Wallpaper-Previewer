@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import torch
 import torchvision.transforms
+from numpy.typing import NDArray
 from PIL import Image as PILImage
 
 from adapted.wall_segmentation import EncoderDecoderPPMWallSegmentationPredictor
@@ -27,8 +28,8 @@ class EncoderDecoderPPMWallSegmenter(WallSegmenter):
         Everseen, Daon, University of Hradec Králové, Singidunum University, University
         of Belgrade.
 
-    Implementation from https://github.com/bjekic/WallSegmentation, using the shared
-    model weights used in the paper.
+    Implementation from https://github.com/bjekic/WallSegmentation. The author's shared
+    model weights were used in this project.
     """
 
     def __init__(self) -> None:
@@ -42,7 +43,7 @@ class EncoderDecoderPPMWallSegmenter(WallSegmenter):
     def model_inference(
         self,
         image: PILImage.Image,
-    ) -> np.ndarray:
+    ) -> NDArray[np.bool_]:
         pil_to_tensor = torchvision.transforms.Compose(
             [
                 torchvision.transforms.ToTensor(),

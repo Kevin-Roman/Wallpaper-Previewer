@@ -17,6 +17,9 @@ from src.rendering import estimate_wall_and_render_material
 
 
 class SurfacePreviewer(ABC):
+    """Base class for surface previewers (applying a wallpaper or texture to a room
+    image)."""
+
     def __init__(
         self,
         room_layout_estimator: RoomLayoutEstimator | None = None,
@@ -33,15 +36,15 @@ class SurfacePreviewer(ABC):
 
     @abstractmethod
     def __call__(self, *args, **kwargs) -> PILImage.Image | None:
-        """Abstract method to be implemented by subclasses."""
+        """The wallpaper/texture previewing pipeline."""
         pass
 
     @staticmethod
-    def transfer_lighting_and_shadows(
+    def get_highlights(
         source_image: MatLike, mask: MatLike, target_image: MatLike
     ) -> MatLike:
-        """Extracts lighting/shadows from source image and overlays them over the target
-        image.
+        """Extracts highlights (lighting/shadows) from source image and overlays them
+        over the target image.
         """
         # Calculate the base colour of the selected area from the source image.
         base_colour = cv2.mean(source_image, mask=mask)
@@ -154,9 +157,8 @@ class WallpaperPreviewer(SurfacePreviewer):
 
         estimate_quadrilateral_mask, corner_coords = estimate_quadrilateral
 
-        # Determine the width and height of the bounding box of the quadrilateral of
-        # the wall.
-        # `np.linalg.norm` computes the euclidean distance.
+        # Determine the width and height of the "bounding box" of the quadrilateral of
+        # the wall. `np.linalg.norm` computes the euclidean distance.
         width, height = int(
             max(
                 np.linalg.norm(corner_coords[1] - corner_coords[0]),
@@ -168,7 +170,6 @@ class WallpaperPreviewer(SurfacePreviewer):
                 np.linalg.norm(corner_coords[3] - corner_coords[0]),
             )
         )
-        # TODO: maybe simplify the above using
 
         # Define the source quadrilateral for the perspective warp.
         src_coords = np.array(
@@ -194,7 +195,7 @@ class WallpaperPreviewer(SurfacePreviewer):
         ).astype(np.uint8)
 
         if transfer_local_highlights:
-            warped_wallpaper = self.transfer_lighting_and_shadows(
+            warped_wallpaper = self.get_highlights(
                 room_image_cv2,
                 combined_mask,
                 warped_wallpaper,
@@ -214,6 +215,7 @@ class WallpaperPreviewer(SurfacePreviewer):
         wall_height_m: float = 2.0,
         pattern_height_m: float = 2.0,
     ):
+        """Fills a rectangle with a seamlessly repeatable pattern."""
         pattern_width_m = pattern_height_m * (
             pattern_image.shape[1] / pattern_image.shape[0]
         )
@@ -276,6 +278,8 @@ class WallpaperPreviewer(SurfacePreviewer):
 
 
 class TexturePreviewer(SurfacePreviewer):
+    """Applies a and renders a texture to each selected walls."""
+
     def __init__(
         self,
         room_layout_estimator: RoomLayoutEstimator | None = None,
@@ -381,7 +385,7 @@ class TexturePreviewer(SurfacePreviewer):
         )
 
         if transfer_local_highlights:
-            overlay_image_cv2 = self.transfer_lighting_and_shadows(
+            overlay_image_cv2 = self.get_highlights(
                 room_image_cv2,
                 mask,
                 overlay_image_cv2,

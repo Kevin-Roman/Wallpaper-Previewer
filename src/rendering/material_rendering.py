@@ -137,7 +137,6 @@ def setup_plane(wall_corners_pixels: WallCorners) -> None:
         scene=scene
     )
 
-    # TODO: see if x, y, and z are attributes
     point_on_line_partial = partial(
         point_on_line_through_pixel,
         camera,
@@ -204,6 +203,7 @@ def setup_plane(wall_corners_pixels: WallCorners) -> None:
     plane.data.vertices[3].co = plane_inverse_world_matrix @ (world_wall_corners[2])
 
 
+"""
 def apply_material(material_name: str = "Poliigon_BrickReclaimedRunning_7787") -> None:
     # Get the existing plane.
     if (plane := bpy.data.objects.get("Plane")) is None:
@@ -229,6 +229,7 @@ def apply_material(material_name: str = "Poliigon_BrickReclaimedRunning_7787") -
         use_16bit=True,
         reuse_material=True,
     )
+"""
 
 
 def render_scene(save_path: Path) -> None:
@@ -246,9 +247,9 @@ def estimate_wall_and_render_material(
 ) -> None:
     bpy.ops.wm.open_mainfile(filepath=str(blender_scene_path.resolve()))
 
-    # ! TODO: Sometimes the plane isn't placed immediately correctly, and requires a
-    # ! retry to apply it correctly. Very weird bug but for now just temporarily run
-    # ! the placing algo twice.
+    # Sometimes the plane isn't placed immediately correctly, and requires a retry to
+    # apply it correctly. Very weird bug but for now just temporarily run the placing
+    # algorithm twice.
     for _ in range(2):
         setup_scene(source_image_path, hdri_path)
         setup_plane(wall_corners_pixels)

@@ -18,27 +18,27 @@ class RoomLayoutEstimator(ABC):
     def __call__(
         self, image: PILImage.Image
     ) -> dict[LayoutSegmentationLabelsOnlyWalls, MatLike]:
+        """Estimates the layout of the room using the given predictor.
+
+        Returns a dictionary mapping the wall label to the corresponding boolean
+        mask of the wall. Maximum number of walls that can be returned is 3.
+        """
         return self.model_inference(image)
 
     @abstractmethod
     def model_inference(
         self, image: PILImage.Image
     ) -> dict[LayoutSegmentationLabelsOnlyWalls, MatLike]:
-        """Estimates the layout of the room using the given predictor.
+        """Pass input for inference through the Room Layout Estimation model.
 
-        Returns a dictionary mapping the wall label to the corresponding boolean
+        Must return a dictionary mapping the wall label to the corresponding boolean
         mask of the wall. Maximum number of walls that can be returned is 3.
-
-        If no quadrilateral plane is detected, None is returned.
         """
         pass
 
     @staticmethod
     def estimate_wall_corners(mask: MatLike) -> WallCorners | None:
-        """Finds the corners of the wall in a boolean mask.
-
-        Assumes that the wall is the largest closed quadrilateral in the mask.
-        """
+        """Finds the corners of the wall in a boolean mask."""
         assert mask.dtype == bool
 
         # Convert to an image so that it can be passed through cv2 functions.
@@ -56,7 +56,7 @@ class RoomLayoutEstimator(ABC):
         if not contours:
             return
 
-        # Select the largest contour based on it's area.
+        # Select the largest contour based on it's area, in case there's more.
         contour = max(contours, key=cv2.contourArea)
 
         # `cv2.arcLength` calculates the perimeter of the contour which is a closed
@@ -100,6 +100,9 @@ class RoomLayoutEstimator(ABC):
     def estimate_quadrilateral(
         selected_wall_plane_mask: MatLike,
     ) -> tuple[MatLike, np.ndarray] | None:
+        """Given a wall mask, estimates the quadrilateral defined by it's corners.
+        Leads to improved edges for the wall mask."""
+
         if not (
             wall_corners := RoomLayoutEstimator.estimate_wall_corners(
                 selected_wall_plane_mask

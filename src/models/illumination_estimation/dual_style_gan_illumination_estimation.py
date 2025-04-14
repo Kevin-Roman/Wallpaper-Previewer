@@ -9,12 +9,18 @@ from src.interfaces import IlluminationEstimator
 
 
 class DualStyleGANIlluminationEstimator(IlluminationEstimator):
-    """Estimates a HDR panorama from a single LDR low-FOV image using StyleLight."""
+    """StyleLight: HDR Panorama Generation for Lighting Estimation and Editing
+
+    This implementation follows the methodology described in the paper:
+        Wang, G., Yang, Y., Loy, C. C., & Liu, Z. (2022).
+        “StyleLight: HDR Panorama Generation for Lighting Estimation and Editing.”
+        Proceedings of the European Conference on Computer Vision (ECCV) 2022.
+
+    Original implementation available at: https://github.com/Wanggcong/StyleLight.
+    Model weights provided by the authors are used in this project.
+    """
 
     def model_inference(self, image: PILImage.Image) -> np.ndarray | None:
-        """Estimates a HDR panorama from a single LDR low-FOV image using the StyleLight
-        method.
-        """
         return stylelight_generate_hdr_panorama(image)
 
 

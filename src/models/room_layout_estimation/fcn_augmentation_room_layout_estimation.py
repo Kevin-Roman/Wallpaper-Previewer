@@ -24,10 +24,8 @@ class FCNAugmentedRoomLayoutEstimator(RoomLayoutEstimator):
         "Indoor Scene Layout Estimation from a Single Image."
         Proceedings of the 24th International Conference on Pattern Recognition (ICPR).
 
-    Implementation from https://github.com/leVirve/lsun-room, and the model weights
-    retrained by the authors, shared, and used in this project. Due to the original
-    weights not able to be released, the model had to be retrained and unfortunately
-    has a lower accuracy than the findings in the paper.
+    Original implementation available at: https://github.com/leVirve/lsun-room.
+    Model weights used were retrained by the authors, shared, and used in this project.
     """
 
     def __init__(self) -> None:
