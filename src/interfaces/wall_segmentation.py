@@ -5,10 +5,14 @@ from PIL import Image as PILImage
 
 
 class WallSegmenter(ABC):
-    """Base class for wall segmentation estimators (classifying pixels as wall or no-wall)."""
+    """Base class for wall segmentation estimators (classifying pixels as wall or
+    no-wall)."""
+
+    def __call__(self, image: PILImage.Image) -> MatLike:
+        return self.model_inference(image)
 
     @abstractmethod
-    def __call__(
+    def model_inference(
         self,
         image: PILImage.Image,
     ) -> MatLike:

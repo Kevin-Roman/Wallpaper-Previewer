@@ -11,7 +11,7 @@ from src.interfaces import IlluminationEstimator
 class DualStyleGANIlluminationEstimator(IlluminationEstimator):
     """Estimates a HDR panorama from a single LDR low-FOV image using StyleLight."""
 
-    def _generate_hdr_panorama(self, image: PILImage.Image) -> np.ndarray | None:
+    def model_inference(self, image: PILImage.Image) -> np.ndarray | None:
         """Estimates a HDR panorama from a single LDR low-FOV image using the StyleLight
         method.
         """

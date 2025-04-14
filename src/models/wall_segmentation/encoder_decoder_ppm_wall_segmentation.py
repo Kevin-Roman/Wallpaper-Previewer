@@ -39,7 +39,7 @@ class EncoderDecoderPPMWallSegmenter(WallSegmenter):
 
         self.segmentation_module = segmentation_module.to(TORCH_DEVICE).eval()
 
-    def __call__(
+    def model_inference(
         self,
         image: PILImage.Image,
     ) -> np.ndarray:

@@ -35,7 +35,7 @@ class FCNAugmentedRoomLayoutEstimator(RoomLayoutEstimator):
             FCN_AUGMENTATION_ROOM_LAYOUT_ESTIMATION_WEIGHTS
         )
 
-    def __call__(
+    def model_inference(
         self,
         image: PILImage.Image,
     ) -> dict[LayoutSegmentationLabelsOnlyWalls, np.ndarray]:

@@ -19,9 +19,15 @@ from src.rendering import estimate_wall_and_render_material
 class SurfacePreviewer(ABC):
     def __init__(
         self,
-        room_layout_estimator: RoomLayoutEstimator = FCNAugmentedRoomLayoutEstimator(),
-        wall_segmenter: WallSegmenter = EncoderDecoderPPMWallSegmenter(),
+        room_layout_estimator: RoomLayoutEstimator | None = None,
+        wall_segmenter: WallSegmenter | None = None,
     ) -> None:
+        if room_layout_estimator is None:
+            room_layout_estimator = FCNAugmentedRoomLayoutEstimator()
+
+        if wall_segmenter is None:
+            wall_segmenter = EncoderDecoderPPMWallSegmenter()
+
         self.room_layout_estimator = room_layout_estimator
         self.wall_segmenter = wall_segmenter
 
@@ -76,20 +82,18 @@ class SurfacePreviewer(ABC):
 class WallpaperPreviewer(SurfacePreviewer):
     def __init__(
         self,
-        room_layout_estimator: RoomLayoutEstimator = FCNAugmentedRoomLayoutEstimator(),
-        wall_segmenter: WallSegmenter = EncoderDecoderPPMWallSegmenter(),
+        room_layout_estimator: RoomLayoutEstimator | None = None,
+        wall_segmenter: WallSegmenter | None = None,
     ) -> None:
         super().__init__(room_layout_estimator, wall_segmenter)
-
-        self.pattern_height_m = 2.0
-        self.wall_height_m = 2.0
-        self.wall_width_m: float | None = None
 
     def __call__(
         self,
         room_image_pil: PILImage.Image,
         wallpaper_image_pil: PILImage.Image,
         selected_walls: set[LayoutSegmentationLabelsOnlyWalls],
+        wall_height_m: float = 2.0,
+        pattern_height_m: float = 2.0,
     ) -> PILImage.Image | None:
         """Applies a wallpaper to the selected walls, perspective warping the wallpaper
         image to the quadrilateral-shaped wall, and masking out the non-wall detected
@@ -118,6 +122,8 @@ class WallpaperPreviewer(SurfacePreviewer):
                 wallpaper_image_cv2,
                 segmented_wall_mask,
                 selected_wall_plane_mask,
+                wall_height_m,
+                pattern_height_m,
             )
             if wallpaper_applied_image is None:
                 continue
@@ -132,6 +138,8 @@ class WallpaperPreviewer(SurfacePreviewer):
         wallpaper_image_cv2: MatLike,
         segmented_wall_mask: MatLike,
         selected_wall_plane_mask: MatLike,
+        wall_height_m: float = 2.0,
+        pattern_height_m: float = 2.0,
         transfer_local_highlights: bool = True,
     ) -> MatLike | None:
         """Transforms and applies a wallpaper onto a wall region in an image."""
@@ -168,9 +176,7 @@ class WallpaperPreviewer(SurfacePreviewer):
         )
 
         tiled_wallpaper = self.__fill_rectangle_with_pattern(
-            wallpaper_image_cv2,
-            width,
-            height,
+            wallpaper_image_cv2, width, height, wall_height_m, pattern_height_m
         )
 
         perspective_warp_transformation = cv2.getPerspectiveTransform(
@@ -203,23 +209,23 @@ class WallpaperPreviewer(SurfacePreviewer):
     def __fill_rectangle_with_pattern(
         self,
         pattern_image: MatLike,
-        rectangle_width_pixels: float,
-        rectangle_height_pixels: float,
+        rectangle_width_pixels: int,
+        rectangle_height_pixels: int,
+        wall_height_m: float = 2.0,
+        pattern_height_m: float = 2.0,
     ):
-        pattern_width_m = self.pattern_height_m * (
+        pattern_width_m = pattern_height_m * (
             pattern_image.shape[1] / pattern_image.shape[0]
         )
 
         wall_width_m = (
-            self.wall_width_m
-            if self.wall_width_m
-            else (rectangle_width_pixels / rectangle_height_pixels) * self.wall_height_m
-        )
+            rectangle_width_pixels / rectangle_height_pixels
+        ) * wall_height_m
 
         wall_height_pixels = rectangle_height_pixels
         wall_width_pixels = rectangle_width_pixels
         pattern_height_pixels = int(
-            wall_height_pixels / (self.wall_height_m / self.pattern_height_m)
+            wall_height_pixels / (wall_height_m / pattern_height_m)
         )
         pattern_width_pixels = int(wall_width_pixels / (wall_width_m / pattern_width_m))
 
@@ -272,11 +278,14 @@ class WallpaperPreviewer(SurfacePreviewer):
 class TexturePreviewer(SurfacePreviewer):
     def __init__(
         self,
-        room_layout_estimator: RoomLayoutEstimator = FCNAugmentedRoomLayoutEstimator(),
-        wall_segmenter: WallSegmenter = EncoderDecoderPPMWallSegmenter(),
-        illumination_estimator: IlluminationEstimator = DualStyleGANIlluminationEstimator(),
+        room_layout_estimator: RoomLayoutEstimator | None = None,
+        wall_segmenter: WallSegmenter | None = None,
+        illumination_estimator: IlluminationEstimator | None = None,
     ):
         super().__init__(room_layout_estimator, wall_segmenter)
+
+        if illumination_estimator is None:
+            illumination_estimator = DualStyleGANIlluminationEstimator()
 
         self.illumination_estimator = illumination_estimator
 
@@ -349,15 +358,10 @@ class TexturePreviewer(SurfacePreviewer):
         transfer_local_highlights: bool = True,
     ) -> PILImage.Image | None:
         """Applies an overlay image over a source room image for chosen walls."""
-        room_image_pil_resized = room_image_pil.resize(overlay_image_pil.size)
-        selected_wall_plane_mask_resized = cv2.resize(
-            selected_wall_plane_mask.astype(np.uint8), overlay_image_pil.size
-        )
-
         if not (
             estimate_quadrilateral := (
                 self.room_layout_estimator.estimate_quadrilateral(
-                    selected_wall_plane_mask_resized
+                    selected_wall_plane_mask
                 )
             )
         ):
@@ -365,14 +369,10 @@ class TexturePreviewer(SurfacePreviewer):
 
         quadrilateral_plane_mask, _ = estimate_quadrilateral
 
-        segmented_wall_mask = self.wall_segmenter(room_image_pil_resized).astype(
-            np.uint8
-        )
+        segmented_wall_mask = self.wall_segmenter(room_image_pil).astype(np.uint8)
 
         # CV2 uses BGR whilst PIL use RGB. Therefore, convert RGB images to BGR.
-        room_image_cv2 = cv2.cvtColor(
-            np.array(room_image_pil_resized), cv2.COLOR_RGB2BGR
-        )
+        room_image_cv2 = cv2.cvtColor(np.array(room_image_pil), cv2.COLOR_RGB2BGR)
         overlay_image_cv2 = cv2.cvtColor(np.array(overlay_image_pil), cv2.COLOR_RGB2BGR)
 
         mask = cv2.bitwise_and(

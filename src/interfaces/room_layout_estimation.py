@@ -15,8 +15,13 @@ class RoomLayoutEstimator(ABC):
     segmenting the different walls/ceiling/floor)
     """
 
-    @abstractmethod
     def __call__(
+        self, image: PILImage.Image
+    ) -> dict[LayoutSegmentationLabelsOnlyWalls, MatLike]:
+        return self.model_inference(image)
+
+    @abstractmethod
+    def model_inference(
         self, image: PILImage.Image
     ) -> dict[LayoutSegmentationLabelsOnlyWalls, MatLike]:
         """Estimates the layout of the room using the given predictor.
@@ -108,6 +113,6 @@ class RoomLayoutEstimator(ABC):
 
         # Create a mask for blending.
         mask = np.zeros_like(selected_wall_plane_mask, dtype=np.uint8)
-        cv2.fillPoly(mask, [corner_coords.astype(np.int32)], 1)
+        cv2.fillPoly(mask, [corner_coords.astype(np.int32)], (1,))
 
         return mask, corner_coords
