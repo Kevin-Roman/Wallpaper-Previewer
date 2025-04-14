@@ -1,78 +1,257 @@
-from tkinter import filedialog
+import threading
+from tkinter import Frame, Toplevel, filedialog, messagebox
+from typing import Callable
 
 import customtkinter as ctk
 from PIL import Image as PILImage
 
+from src.app.surface_previewer import WallpaperPreviewer
 from src.common import LayoutSegmentationLabels, LayoutSegmentationLabelsOnlyWalls
 
-from src.app.surface_previewer import WallpaperPreviewer
+DEFAULT_FONT_FAMILY = "montserrat"
 
 
-class WallpaperMode(ctk.CTk):
+class UploadFrame(ctk.CTkFrame):
+    def __init__(self, master: Frame, title: str, command: Callable, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.columnconfigure(0, weight=1)
+
+        self.label = ctk.CTkLabel(
+            self,
+            text=title,
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=20, weight="bold"),
+        )
+        self.label.grid(row=0, column=0, pady=(10, 5))
+
+        self.upload_button = ctk.CTkButton(
+            self,
+            text="Upload",
+            command=command,
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=14),
+        )
+        self.upload_button.grid(row=1, column=0, pady=10)
+
+        self.image_label = ctk.CTkLabel(
+            self,
+            text="No image uploaded",
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=14),
+            width=300,
+            height=300,
+            corner_radius=10,
+            text_color="#242424",
+            fg_color="#cccccc",
+            anchor="center",
+        )
+        self.image_label.grid(row=2, column=0, pady=10)
+
+    def display_image(self, image: PILImage.Image, max_side_length: int = 300) -> None:
+        image_thumbnail = image.copy()
+        image_thumbnail.thumbnail(
+            (max_side_length, max_side_length), PILImage.Resampling.LANCZOS
+        )
+
+        self.image = ctk.CTkImage(
+            image_thumbnail, size=(image_thumbnail.width, image_thumbnail.height)
+        )
+        self.image_label.configure(image=self.image, text="", fg_color="transparent")
+
+
+class OptionsFrame(ctk.CTkFrame):
+    def __init__(self, master: Frame, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.title_label = ctk.CTkLabel(
+            self,
+            text="Options",
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=20, weight="bold"),
+        )
+        self.title_label.grid(
+            row=0, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="nw"
+        )
+
+        # Walls Label and Checkboxes (on the same row)
+        self.walls_label = ctk.CTkLabel(self, text="Walls to apply wallpaper to: ")
+        self.walls_label.grid(row=1, column=0, sticky="w", padx=10)
+
+        # Checkboxes for Walls (left, centre, right) on the same row as the label
+        self.wall_left = ctk.CTkCheckBox(self, text="Left Wall")
+        self.wall_left.grid(row=1, column=1, sticky="w")
+        self.wall_left.select()
+
+        self.wall_centre = ctk.CTkCheckBox(self, text="Centre Wall")
+        self.wall_centre.grid(row=1, column=2, sticky="w")
+        self.wall_centre.select()
+
+        self.wall_right = ctk.CTkCheckBox(self, text="Right Wall")
+        self.wall_right.grid(row=1, column=3, sticky="w")
+        self.wall_right.select()
+
+        # Wallpaper Height
+        self.room_height_label = ctk.CTkLabel(self, text="Room height (metres):")
+        self.room_height_label.grid(row=2, column=0, sticky="w", padx=10)
+
+        self.room_height_entry = ctk.CTkEntry(self, width=40)
+        self.room_height_entry.grid(row=2, column=1, pady=5, padx=10)
+        self.room_height_entry.insert(0, "2.0")
+
+        self.wallpaper_sample_height_label = ctk.CTkLabel(
+            self, text="Wallpaper sample height (metres):"
+        )
+        self.wallpaper_sample_height_label.grid(row=3, column=0, sticky="w", padx=10)
+
+        self.wallpaper_sample_height_entry = ctk.CTkEntry(self, width=40)
+        self.wallpaper_sample_height_entry.grid(row=3, column=1, pady=5, padx=10)
+        self.wallpaper_sample_height_entry.insert(0, "2.0")
+
+
+class PreviewFrame(ctk.CTkFrame):
+    def __init__(self, master: Frame, command: Callable, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.columnconfigure(0, weight=1)
+
+        # Title Label
+        self.label = ctk.CTkLabel(
+            self,
+            text="Preview",
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=20, weight="bold"),
+        )
+        self.label.grid(row=0, column=0, pady=(10, 5))
+
+        self.image_label = ctk.CTkLabel(
+            self,
+            text="No preview image generated",
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=14),
+            width=300,
+            height=300,
+            corner_radius=10,
+            text_color="#242424",
+            fg_color="#cccccc",
+            anchor="center",
+        )
+        self.image_label.grid(row=1, column=0, pady=10)
+
+        # Save Button
+        self.save_button = ctk.CTkButton(
+            self,
+            text="Save",
+            command=command,
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=14),
+        )
+        self.save_button.grid(row=2, column=0, pady=10)
+        self.save_button.configure(state="disabled")
+
+    def display_image(self, image: PILImage.Image, max_side_length: int = 300) -> None:
+        image_thumbnail = image.copy()
+        image_thumbnail.thumbnail(
+            (max_side_length, max_side_length), PILImage.Resampling.LANCZOS
+        )
+
+        self.image = ctk.CTkImage(
+            image_thumbnail, size=(image_thumbnail.width, image_thumbnail.height)
+        )
+        self.image_label.configure(image=self.image, text="", fg_color="transparent")
+        self.image_label.bind(
+            "<Button-1>", lambda event: self.create_image_window(image)
+        )
+
+    @staticmethod
+    def create_image_window(image: PILImage.Image) -> None:
+        top = Toplevel()
+        top.title("Enlarged Image")
+
+        ctk_image = ctk.CTkImage(image, size=(image.width, image.height))
+
+        label = ctk.CTkLabel(top, image=ctk_image, text="", fg_color="transparent")
+        label.pack()
+
+
+class WallpaperPreviewerPage(ctk.CTk):
     def __init__(self, wallpaper_previewer: WallpaperPreviewer) -> None:
         super().__init__()
+
         self.wallpaper_previewer = wallpaper_previewer
-        self.room_image: PILImage.Image | None = None
-        self.wallpaper_image: PILImage.Image | None = None
+
+        self.room_photo_pil: PILImage.Image | None = None
+        self.wallpaper_pil: PILImage.Image | None = None
+        self.selected_walls: set[LayoutSegmentationLabelsOnlyWalls] = set()
+        self.room_height: float = 2.0
+        self.wallpaper_sample_height: float = 2.0
         self.output_image: PILImage.Image | None = None
 
-        # Setup.
+        ctk.set_appearance_mode("Dark")
+        ctk.set_default_color_theme("blue")
+
         self.title("Wallpaper Previewer")
-        self.geometry("1400x1400")
+        self.geometry("800x600")
+        self.minsize(600, 400)
 
-        # Image upload buttons.
-        self.upload_room_button = ctk.CTkButton(
-            self, text="Upload Room Photo", command=self.upload_room
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        self.scrollable_frame = ctk.CTkScrollableFrame(
+            self, corner_radius=0, fg_color="transparent"
         )
-        self.upload_room_button.grid(row=0, column=0, padx=10, pady=10)
+        self.scrollable_frame.grid(row=0, column=0, sticky="nsew")
+        self.scrollable_frame.grid_columnconfigure(0, weight=1)
 
-        self.upload_wallpaper_button = ctk.CTkButton(
-            self, text="Upload Wallpaper", command=self.upload_wallpaper
+        self.__create_header()
+        self.__create_upload_content_frame()
+        self.__create_preview_content_frame()
+
+    def __create_header(self) -> None:
+        self.header = ctk.CTkLabel(
+            self.scrollable_frame,
+            text="Wallpaper Previewer",
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=32, weight="bold"),
+            anchor="center",
         )
-        self.upload_wallpaper_button.grid(row=0, column=1, padx=10, pady=10)
+        self.header.grid(row=0, column=0, pady=20, sticky="nsew")
 
-        # Checkboxes for selecting the walls to apply the wallpaper to.
-        self.selected_walls: set[LayoutSegmentationLabelsOnlyWalls] = set()
-        self.checkbox_vars = {}
-        for i, option in enumerate(LayoutSegmentationLabels.walls()):
-            var = ctk.BooleanVar()
-            checkbox = ctk.CTkCheckBox(
-                self,
-                text=option.name,
-                variable=var,
-                command=lambda opt=option, v=var: self.update_selection(opt, v),
-            )
-            checkbox.grid(row=1, column=i, padx=10, pady=10)
-            self.checkbox_vars[option] = var
+    def __create_upload_content_frame(self) -> None:
+        self.content_frame = ctk.CTkFrame(self.scrollable_frame)
+        self.content_frame.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+        self.content_frame.grid_columnconfigure((0, 1), weight=1)
 
-        # Apply wallpaper button. Initiates the surface previewing logic.
-        self.preview_button = ctk.CTkButton(
-            self, text="Apply Wallpaper", command=self.preview_wallpaper
+        # Room Photo Upload.
+        self.room_photo_upload = UploadFrame(
+            self.content_frame,
+            title="Room Photo",
+            command=self.__upload_room_photo,
         )
-        self.preview_button.grid(row=2, column=0, pady=20)
+        self.room_photo_upload.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Uploaded image labels.
-        self.room_label = ctk.CTkLabel(self, text="Room Photo")
-        self.room_label.grid(row=3, column=0, padx=10, pady=10)
-
-        self.wallpaper_label = ctk.CTkLabel(self, text="Wallpaper")
-        self.wallpaper_label.grid(row=3, column=1, padx=10, pady=10)
-
-        self.result_label = ctk.CTkLabel(self, text="Result Preview")
-        self.result_label.grid(row=4, column=0, pady=10)
-
-        # Surface previewing processing progress bar.
-        self.progress_bar = ctk.CTkProgressBar(self, orientation="horizontal")
-        self.progress_bar.set(0)
-        self.progress_bar.grid(row=5, column=0, pady=10)
-
-        # Save output image button.
-        self.save_button = ctk.CTkButton(
-            self, text="Save Output", command=self.save_image, state="disabled"
+        # Wallpaper Upload.
+        self.wallpaper_upload = UploadFrame(
+            self.content_frame,
+            title="Wallpaper",
+            command=self.__upload_wallpaper,
         )
-        self.save_button.grid(row=6, column=0, pady=10)
+        self.wallpaper_upload.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-    def upload_room(self) -> None:
+        # Options.
+        self.options_frame = OptionsFrame(self.content_frame)
+        self.options_frame.grid(
+            row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew"
+        )
+
+        # Apply wallpaper button.
+        self.upload_button = ctk.CTkButton(
+            self.content_frame,
+            text="Apply Wallpaper",
+            command=self.__apply_wallpaper,
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=14),
+        )
+        self.upload_button.grid(row=2, column=0, pady=10)
+
+    def __create_preview_content_frame(self) -> None:
+        self.preview_frame = PreviewFrame(
+            self.scrollable_frame, command=self.__save_output_image
+        )
+        self.preview_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+
+    def __upload_room_photo(self) -> None:
         if not (
             file_path := filedialog.askopenfilename(
                 filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")]
@@ -80,18 +259,10 @@ class WallpaperMode(ctk.CTk):
         ):
             return
 
-        self.room_image = PILImage.open(file_path)
-        image_display = ctk.CTkImage(
-            self.room_image,
-            size=(
-                int(self.room_image.width * (200 / self.room_image.height)),
-                200,
-            ),
-        )
-        self.room_label.configure(image=image_display, text="")
-        self.room_label.image = image_display
+        self.room_photo_pil = PILImage.open(file_path)
+        self.room_photo_upload.display_image(PILImage.open(file_path))
 
-    def upload_wallpaper(self) -> None:
+    def __upload_wallpaper(self) -> None:
         if not (
             file_path := filedialog.askopenfilename(
                 filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")]
@@ -99,43 +270,60 @@ class WallpaperMode(ctk.CTk):
         ):
             return
 
-        self.wallpaper_image = PILImage.open(file_path)
-        image_display = ctk.CTkImage(
-            self.wallpaper_image,
-            size=(
-                int(self.wallpaper_image.width * (200 / self.wallpaper_image.height)),
-                200,
-            ),
-        )
-        self.wallpaper_label.configure(image=image_display, text="")
-        self.wallpaper_label.image = image_display
+        self.wallpaper_pil = PILImage.open(file_path)
+        self.wallpaper_upload.display_image(PILImage.open(file_path))
 
-    def preview_wallpaper(self) -> None:
-
-        if not self.room_image or not self.wallpaper_image:
-            self.result_label.configure(text="Upload both images first!")
+    def __apply_wallpaper(self) -> None:
+        if not self.room_photo_pil or not self.wallpaper_pil:
+            messagebox.showerror(
+                "Error", "Please upload both a room photo and a wallpaper."
+            )
             return
 
-        self.progress_bar.set(0)
-        self.update_idletasks()
+        self.selected_walls.clear()
+        if self.options_frame.wall_left.get():
+            self.selected_walls.add(LayoutSegmentationLabels.WALL_LEFT)
+        if self.options_frame.wall_centre.get():
+            self.selected_walls.add(LayoutSegmentationLabels.WALL_CENTRE)
+        if self.options_frame.wall_right.get():
+            self.selected_walls.add(LayoutSegmentationLabels.WALL_RIGHT)
+
+        try:
+            self.room_height = float(self.options_frame.room_height_entry.get())
+            self.wallpaper_sample_height = float(
+                self.options_frame.wallpaper_sample_height_entry.get()
+            )
+        except ValueError:
+            messagebox.showerror(
+                "Error",
+                "Please enter valid numerical values for room height and wallpaper "
+                "sample height.",
+            )
+            return
+
+        thread = threading.Thread(target=self.__apply_wallpaper_thread)
+        thread.start()
+
+    def __apply_wallpaper_thread(self) -> None:
+        assert self.room_photo_pil is not None
+        assert self.wallpaper_pil is not None
 
         self.output_image = self.wallpaper_previewer(
-            self.room_image, self.wallpaper_image, self.selected_walls
+            self.room_photo_pil,
+            self.wallpaper_pil,
+            self.selected_walls,
+            self.room_height,
+            self.wallpaper_sample_height,
         )
-        self.progress_bar.set(1)
 
-        result_display = ctk.CTkImage(
-            self.output_image,
-            size=(
-                int(self.output_image.width * (500 / self.output_image.height)),
-                500,
-            ),
-        )
-        self.result_label.configure(image=result_display, text="")
-        self.result_label.image = result_display
-        self.save_button.configure(state="normal")
+        if self.output_image is None:
+            messagebox.showerror("Error", "Failed to apply wallpaper.")
+            return
 
-    def save_image(self) -> None:
+        self.preview_frame.display_image(self.output_image)
+        self.preview_frame.save_button.configure(state="normal")
+
+    def __save_output_image(self) -> None:
         if not self.output_image or not (
             file_path := filedialog.asksaveasfilename(
                 defaultextension=".png",
@@ -149,12 +337,3 @@ class WallpaperMode(ctk.CTk):
             return
 
         self.output_image.save(file_path)
-
-    def update_selection(
-        self, option: LayoutSegmentationLabelsOnlyWalls, var: ctk.BooleanVar
-    ) -> None:
-        if not var.get():
-            self.selected_walls.discard(option)
-            return
-
-        self.selected_walls.add(option)

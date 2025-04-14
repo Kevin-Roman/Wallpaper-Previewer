@@ -1,5 +1,5 @@
 from .menu import MainMenu
 from .rendering_mode import RenderingMode
-from .wallpaper_mode import WallpaperMode
+from .wallpaper_mode import WallpaperPreviewerPage
 
-__all__ = ["MainMenu", "RenderingMode", "WallpaperMode"]
+__all__ = ["MainMenu", "RenderingMode", "WallpaperPreviewerPage"]

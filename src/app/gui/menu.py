@@ -1,10 +1,12 @@
 import customtkinter as ctk
 
 from .rendering_mode import RenderingMode
-from .wallpaper_mode import WallpaperMode
+from .wallpaper_mode import WallpaperPreviewerPage
 from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
 from src.models.wall_segmentation import EncoderDecoderPPMWallSegmenter
 from src.app.surface_previewer import WallpaperPreviewer, TexturePreviewer
+
+DEFAULT_FONT_FAMILY = "montserrat"
 
 
 class MainMenu(ctk.CTk):
@@ -14,18 +16,33 @@ class MainMenu(ctk.CTk):
         self.wall_segmenter = EncoderDecoderPPMWallSegmenter()
 
         self.title("Main Menu")
-        self.geometry("400x300")
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkButton(
+        self.create_header()
+
+        open_wallpaper_previewer_button = ctk.CTkButton(
             self, text="Open Wallpaper Previewer", command=self.open_wallpaper_previewer
-        ).pack(pady=20)
-        ctk.CTkButton(
-            self, text="Open Surface Previewer", command=self.open_rendering_previewer
-        ).pack(pady=20)
+        )
+        open_wallpaper_previewer_button.grid(row=1, column=0, pady=5)
+
+        open_texture_previewer_button = ctk.CTkButton(
+            self, text="Open Texture Previewer", command=self.open_rendering_previewer
+        )
+        open_texture_previewer_button.grid(row=2, column=0, pady=5)
+
+    def create_header(self) -> None:
+        self.header = ctk.CTkLabel(
+            self,
+            text="Wallpaper Previewer",
+            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=32, weight="bold"),
+            anchor="center",
+        )
+        self.header.grid(row=0, column=0, pady=20, sticky="n")
 
     def open_wallpaper_previewer(self):
         self.destroy()
-        app = WallpaperMode(
+        app = WallpaperPreviewerPage(
             WallpaperPreviewer(self.room_layout_estimator, self.wall_segmenter)
         )
         app.mainloop()
