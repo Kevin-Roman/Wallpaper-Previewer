@@ -176,7 +176,7 @@ class WallpaperPreviewer(SurfacePreviewer):
             ((0, 0), (width, 0), (width, height), (0, height)), dtype=np.float32
         )
 
-        tiled_wallpaper = self.__fill_rectangle_with_pattern(
+        tiled_wallpaper = self.fill_rectangle_with_pattern(
             wallpaper_image_cv2, width, height, wall_height_m, pattern_height_m
         )
 
@@ -207,8 +207,8 @@ class WallpaperPreviewer(SurfacePreviewer):
 
         return output_image
 
-    def __fill_rectangle_with_pattern(
-        self,
+    @staticmethod
+    def fill_rectangle_with_pattern(
         pattern_image: MatLike,
         rectangle_width_pixels: int,
         rectangle_height_pixels: int,
