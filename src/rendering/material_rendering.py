@@ -41,19 +41,24 @@ def calculate_point_given_x_and_y(
     world_position_start: Vector,
     direction_vector: Vector,
     target_x: float,
-    target_y: float,
+    _: float,
 ) -> Vector:
     """Calculate the point on a line (position + direction) given the x and y
     coordinates.
 
-    As the line might not have a point at the given x and y coordinates, the closest
-    point on the line to the target x and y coordinates is determined."""
-    target_point = Vector((target_x, target_y, world_position_start.z))
-    line_to_target = target_point - world_position_start
-    # Project the line to the target point onto the direction vector, getting the
-    # distance from the start point to the closest point on the line
-    t = line_to_target.dot(direction_vector) / direction_vector.length_squared
-    return world_position_start + t * direction_vector
+    As the line might not have a point at the given x and y coordinates, the y
+    coordinate is calculated given the x value.
+    """
+    if direction_vector.x == 0 or direction_vector.y == 0:
+        raise ValueError(
+            "The line is parallel to the XY plane, cannot intersect at a specific "
+            "X and Y."
+        )
+
+    t = (target_x - world_position_start.x) / direction_vector.x
+    point = world_position_start + direction_vector * t
+
+    return point
 
 
 def point_on_line_through_pixel(
