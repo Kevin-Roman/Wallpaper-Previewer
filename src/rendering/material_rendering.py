@@ -17,6 +17,9 @@ def calculate_point_on_line(
     world_position_start: Vector, pixel_vector: Vector, distance: float
 ) -> Vector:
     """Calculate the point on a line (position + direction)"""
+    if distance <= 0:
+        raise ValueError("Distance must be greater than 0.")
+
     return world_position_start + pixel_vector.normalized() * distance
 
 

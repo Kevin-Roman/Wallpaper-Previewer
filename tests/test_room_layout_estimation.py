@@ -148,6 +148,16 @@ def test_estimate_quadrilateral(subtests: SubTests) -> None:
                 ]
             ),
         ),
+        Testcase(
+            description="no wall",
+            mask=np.array(
+                [
+                    [0],
+                ]
+            ).astype(bool),
+            expect_estimated_quadrilateral=False,
+            expected_estimated_quadrilateral_mask=None,
+        ),
     ]
 
     for testcase in testcases:
