@@ -40,7 +40,7 @@ class SurfacePreviewer(ABC):
         pass
 
     @staticmethod
-    def get_highlights(
+    def apply_highlights(
         source_image: MatLike, mask: MatLike, target_image: MatLike
     ) -> MatLike:
         """Extracts highlights (lighting/shadows) from source image and overlays them
@@ -195,7 +195,7 @@ class WallpaperPreviewer(SurfacePreviewer):
         ).astype(np.uint8)
 
         if transfer_local_highlights:
-            warped_wallpaper = self.get_highlights(
+            warped_wallpaper = self.apply_highlights(
                 room_image_cv2,
                 combined_mask,
                 warped_wallpaper,
@@ -385,7 +385,7 @@ class TexturePreviewer(SurfacePreviewer):
         )
 
         if transfer_local_highlights:
-            overlay_image_cv2 = self.get_highlights(
+            overlay_image_cv2 = self.apply_highlights(
                 room_image_cv2,
                 mask,
                 overlay_image_cv2,
