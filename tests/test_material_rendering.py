@@ -114,3 +114,73 @@ def test_calculate_point_on_line(subtests: SubTests) -> None:
                 continue
 
             assert calculate_point_on_line(*args) == testcase.expected_point_on_line
+
+
+def test_calculate_point_given_z(subtests: SubTests) -> None:
+    @dataclass(frozen=True)
+    class Testcase:
+        description: str
+        world_position_start: TestVector
+        direction_vector: TestVector
+        target_z: float
+        expected_point_give_z: TestVector | None
+
+    testcases = [
+        Testcase(
+            description="direction vector with non-zero z component",
+            world_position_start=TestVector(0, 0, 0),
+            direction_vector=TestVector(1, 1, 1),
+            target_z=5,
+            expected_point_give_z=TestVector(5, 5, 5),
+        ),
+        Testcase(
+            description="direction vector with zero z component",
+            world_position_start=TestVector(0, 0, 0),
+            direction_vector=TestVector(1, 1, 0),
+            target_z=5,
+            expected_point_give_z=None,
+        ),
+        Testcase(
+            description="direction vector with non-zero z component; negative z target",
+            world_position_start=TestVector(0, 0, 0),
+            direction_vector=TestVector(1, 1, 1),
+            target_z=-5,
+            expected_point_give_z=TestVector(-5, -5, -5),
+        ),
+        Testcase(
+            description="direction vector with negative z component",
+            world_position_start=TestVector(0, 0, 0),
+            direction_vector=TestVector(-1, -1, -1),
+            target_z=5,
+            expected_point_give_z=TestVector(5, 5, 5),
+        ),
+        Testcase(
+            description="target z of zero",
+            world_position_start=TestVector(0, 0, 0),
+            direction_vector=TestVector(1, 1, 1),
+            target_z=0,
+            expected_point_give_z=TestVector(0, 0, 0),
+        ),
+        Testcase(
+            description="direction vector with non-zero z component; non-origin start "
+            "point",
+            world_position_start=TestVector(1, 1, 1),
+            direction_vector=TestVector(1, 1, 1),
+            target_z=5,
+            expected_point_give_z=TestVector(5, 5, 5),
+        ),
+    ]
+
+    for testcase in testcases:
+        with subtests.test(testcase.description):
+            args = (
+                testcase.world_position_start,
+                testcase.direction_vector,
+                testcase.target_z,
+            )
+
+            if testcase.expected_point_give_z is None:
+                pytest.raises(ValueError, calculate_point_given_z, *args)
+                continue
+
+            assert calculate_point_given_z(*args) == testcase.expected_point_give_z
