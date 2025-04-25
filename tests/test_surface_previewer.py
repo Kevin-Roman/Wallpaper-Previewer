@@ -28,15 +28,14 @@ def test_get_highlights() -> None:
     # The mean colour of the masked area of the source image should be
     # (0 + 255) / 2 = 127.5, which is then subtracted from the masked source image,
     # and then added onto the target image.
-    assert np.array_equal(
-        highlighted_image,
-        np.array(
+    expected_highlighted_image = np.array(
+        [
             [
-                [
-                    [0, 0, 0],
-                    [np.round(127.5), np.round(127.5), np.round(127.5)],
-                    [0, 0, 0],
-                ]
+                [0, 0, 0],
+                [np.round(127.5), np.round(127.5), np.round(127.5)],
+                [0, 0, 0],
             ]
-        ),
-    ), "Highlighted image does not match the expected output"
+        ],
+    )
+
+    assert np.array_equal(highlighted_image, expected_highlighted_image)

@@ -18,11 +18,11 @@ def test_fill_rectangle_with_pattern() -> None:
         pattern_height_m,
     )
 
+    expected_pattern_filled_rectangle = np.full((50, 100, 3), 255, dtype=np.uint8)
+
     assert pattern_filled_rectangle.shape == (50, 100, 3), (
         "Pattern filled rectangle doesn't match the shape of the desired rectangle "
         f"({rectangle_height_pixels}, {rectangle_width_pixels}, 3)"
     )
 
-    assert np.array_equal(
-        pattern_filled_rectangle, np.full((50, 100, 3), 255, dtype=np.uint8)
-    ), "Pattern filled rectangle isn't filled with the expected pattern"
+    assert np.array_equal(pattern_filled_rectangle, expected_pattern_filled_rectangle)

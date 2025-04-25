@@ -1,0 +1,114 @@
+from dataclasses import dataclass
+
+import numpy as np
+from pytest_subtests import SubTests
+
+from src.common import PixelPoint, WallCorners
+from src.interfaces.room_layout_estimation import RoomLayoutEstimator
+
+
+def test_estimate_wall_corners(subtests: SubTests) -> None:
+    @dataclass(frozen=True)
+    class Testcase:
+        description: str
+        mask: np.ndarray
+        expected_wall_corners: WallCorners | None
+
+    testcases = [
+        Testcase(
+            description="non-rectangular wall",
+            mask=np.array(
+                [
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 1, 0],
+                    [0, 0, 1, 1, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 0, 0, 0, 0],
+                ]
+            ).astype(bool),
+            expected_wall_corners=WallCorners(
+                top_left=PixelPoint(row=3, col=1),
+                top_right=PixelPoint(row=1, col=3),
+                bottom_left=PixelPoint(row=5, col=1),
+                bottom_right=PixelPoint(row=5, col=3),
+            ),
+        ),
+        Testcase(
+            description="rectangular wall",
+            mask=np.array(
+                [
+                    [0, 0, 0, 0, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 0, 0, 0, 0],
+                ]
+            ).astype(bool),
+            expected_wall_corners=WallCorners(
+                top_left=PixelPoint(row=1, col=1),
+                top_right=PixelPoint(row=1, col=3),
+                bottom_left=PixelPoint(row=5, col=1),
+                bottom_right=PixelPoint(row=5, col=3),
+            ),
+        ),
+        Testcase(
+            description="wall on edges",
+            mask=np.array(
+                [
+                    [1, 1, 1],
+                    [1, 1, 1],
+                ]
+            ).astype(bool),
+            expected_wall_corners=WallCorners(
+                top_left=PixelPoint(row=0, col=0),
+                top_right=PixelPoint(row=0, col=2),
+                bottom_left=PixelPoint(row=1, col=0),
+                bottom_right=PixelPoint(row=1, col=2),
+            ),
+        ),
+        Testcase(
+            description="wall with only one corner",
+            mask=np.array(
+                [
+                    [1],
+                ]
+            ).astype(bool),
+            expected_wall_corners=None,
+        ),
+        Testcase(
+            description="no wall",
+            mask=np.array(
+                [
+                    [0],
+                ]
+            ).astype(bool),
+            expected_wall_corners=None,
+        ),
+        Testcase(
+            description="wall without 4 clear corners",
+            mask=np.array(
+                [
+                    [0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 0, 1, 0, 0],
+                    [0, 1, 1, 1, 0],
+                    [0, 1, 0, 1, 0],
+                    [0, 0, 0, 0, 0],
+                ]
+            ).astype(bool),
+            expected_wall_corners=None,
+        ),
+    ]
+
+    for testcase in testcases:
+        with subtests.test(testcase.description):
+            wall_corners = RoomLayoutEstimator.estimate_wall_corners(testcase.mask)
+
+            assert (wall_corners is None) == (testcase.expected_wall_corners is None)
+
+            assert wall_corners == testcase.expected_wall_corners
