@@ -1,0 +1,5 @@
+[run]
+omit =
+    */adapted/*,
+    */external/*,
+    */tests/*

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
+from cv2.typing import MatLike
 from pytest_subtests import SubTests
 
 from src.common import PixelPoint, WallCorners
@@ -109,6 +110,64 @@ def test_estimate_wall_corners(subtests: SubTests) -> None:
         with subtests.test(testcase.description):
             wall_corners = RoomLayoutEstimator.estimate_wall_corners(testcase.mask)
 
-            assert (wall_corners is None) == (testcase.expected_wall_corners is None)
-
             assert wall_corners == testcase.expected_wall_corners
+
+
+def test_estimate_quadrilateral(subtests: SubTests) -> None:
+    @dataclass(frozen=True)
+    class Testcase:
+        description: str
+        mask: np.ndarray
+        expect_estimated_quadrilateral: bool
+        expected_estimated_quadrilateral_mask: MatLike | None
+
+    testcases = [
+        Testcase(
+            description="wall with 4 corners but non straight edges",
+            mask=np.array(
+                [
+                    [1, 1, 1, 0, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                ]
+            ).astype(bool),
+            expect_estimated_quadrilateral=True,
+            expected_estimated_quadrilateral_mask=np.array(
+                [
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                ]
+            ),
+        ),
+    ]
+
+    for testcase in testcases:
+        with subtests.test(testcase.description):
+            estimated_quadrilateral = RoomLayoutEstimator.estimate_quadrilateral(
+                testcase.mask
+            )
+
+            assert (
+                estimated_quadrilateral is None
+            ) != testcase.expect_estimated_quadrilateral
+
+            if estimated_quadrilateral is None:
+                continue
+
+            assert testcase.expected_estimated_quadrilateral_mask is not None
+
+            estimated_quadrilateral_mask, _ = estimated_quadrilateral
+
+            assert np.array_equal(
+                estimated_quadrilateral_mask,
+                testcase.expected_estimated_quadrilateral_mask,
+            )
