@@ -190,3 +190,4 @@ temp/
 checkpoints/
 *.blend1
 releases/
+datasets/

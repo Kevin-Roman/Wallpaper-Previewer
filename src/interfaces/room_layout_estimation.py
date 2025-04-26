@@ -7,7 +7,12 @@ from PIL import Image as PILImage
 
 from constants import ARC_LENGTH_DEVIATION_TOLERANCE
 
-from ..common import LayoutSegmentationLabelsOnlyWalls, PixelPoint, WallCorners
+from ..common import (
+    LayoutSegmentationLabelsOnlyWalls,
+    PixelPoint,
+    WallCorners,
+    LayoutSegmentationLabels,
+)
 
 
 class RoomLayoutEstimator(ABC):
@@ -23,12 +28,16 @@ class RoomLayoutEstimator(ABC):
         Returns a dictionary mapping the wall label to the corresponding boolean
         mask of the wall. Maximum number of walls that can be returned is 3.
         """
-        return self.model_inference(image)
+        return {
+            label: mask
+            for label, mask in self.model_inference(image).items()
+            if label in LayoutSegmentationLabelsOnlyWalls  # type: ignore
+        }
 
     @abstractmethod
     def model_inference(
         self, image: PILImage.Image
-    ) -> dict[LayoutSegmentationLabelsOnlyWalls, MatLike]:
+    ) -> dict[LayoutSegmentationLabels, MatLike]:
         """Pass input for inference through the Room Layout Estimation model.
 
         Must return a dictionary mapping the wall label to the corresponding boolean
