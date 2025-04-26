@@ -189,3 +189,4 @@ weights/
 temp/
 checkpoints/
 *.blend1
+releases/
