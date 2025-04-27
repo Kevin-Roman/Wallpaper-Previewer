@@ -7,14 +7,14 @@ from scipy.io import loadmat
 from src.interfaces import RoomLayoutEstimator
 from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
 
-from .common import (
+from ..utils import (
     max_bipartite_matching_score,
     merge_masks,
     pixel_error,
 )
 
 
-def lsun_room_testing() -> list[float]:
+def get_lsun_room_validation_data() -> tuple[list[np.ndarray], list[np.ndarray]]:
     dataset_path = Path("datasets/lsun_room/relabelled")
     image_folder = dataset_path / "images"
     label_folder = dataset_path / "layout_seg"
@@ -35,12 +35,12 @@ def lsun_room_testing() -> list[float]:
         filename for filename in test_filenames if filename in set(image_filenames)
     ]
 
-    test_images = [
+    images = [
         np.array(PILImage.open(image_folder / f"{filename}.jpg"))
         for filename in filtered_test_filenames
     ]
 
-    test_labels = [
+    labels = [
         np.array(loadmat(label_folder / f"{filename}.mat")["layout"])
         for filename in filtered_test_filenames
         if filename in label_filenames
@@ -57,29 +57,34 @@ def lsun_room_testing() -> list[float]:
     }
 
     map = np.vectorize(lambda label: mapping[label])
-    test_labels = [map(array) for array in test_labels]
+    labels = [map(array) for array in labels]
+    return images, labels
+
+
+def evaluate_lsun_room() -> list[float]:
+    images, grount_truth = get_lsun_room_validation_data()
 
     room_layout_estimator: RoomLayoutEstimator = FCNAugmentedRoomLayoutEstimator()
 
     pixel_errors: list[float] = []
     scores: list[float] = []
     errors = 0
-    for i, test_image in enumerate(test_images):
+    for i, test_image in enumerate(images):
         mask_map = room_layout_estimator.model_inference(PILImage.fromarray(test_image))
         merged_mask = merge_masks(mask_map)
 
-        if merged_mask.shape != test_labels[i].shape:
+        if merged_mask.shape != grount_truth[i].shape:
             errors += 1
             continue
 
-        pixel_error_value = pixel_error(merged_mask, test_labels[i])
-        score = max_bipartite_matching_score(merged_mask, test_labels[i])
+        pixel_error_value = pixel_error(merged_mask, grount_truth[i])
+        score = max_bipartite_matching_score(merged_mask, grount_truth[i])
 
         pixel_errors.append(pixel_error_value)
         scores.append(score)
 
         print(
-            f"Image {i + 1}/{len(test_images)}: "
+            f"Image {i + 1}/{len(images)}: "
             f"Pixel error: {pixel_error_value:.2%}, "
             f"Score: {score:.2%}"
         )

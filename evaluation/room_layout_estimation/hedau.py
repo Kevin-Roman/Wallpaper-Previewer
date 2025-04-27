@@ -6,14 +6,14 @@ from scipy.io import loadmat
 
 from src.models.room_layout_estimation import FCNAugmentedRoomLayoutEstimator
 
-from .common import (
+from ..utils import (
     max_bipartite_matching_score,
     merge_masks,
     pixel_error,
 )
 
 
-def hedau_testing() -> list[float]:
+def get_hedau_test_data() -> tuple[list[np.ndarray], list[np.ndarray]]:
     dataset_path = Path("datasets/hedau")
     image_folder = dataset_path / "images"
     label_folder = dataset_path / "layout_seg"
@@ -43,27 +43,32 @@ def hedau_testing() -> list[float]:
     map_func = np.vectorize(lambda label: mapping[label])
     test_labels = [map_func(arr) for arr in test_labels]
 
+    return test_images, test_labels
+
+
+def evaluate_hedau() -> list[float]:
+    images, ground_truth = get_hedau_test_data()
     room_layout_estimator = FCNAugmentedRoomLayoutEstimator()
 
     pixel_errors: list[float] = []
     scores: list[float] = []
     errors = 0
-    for i, test_image in enumerate(test_images):
+    for i, test_image in enumerate(images):
         mask_map = room_layout_estimator.model_inference(PILImage.fromarray(test_image))
         merged_mask = merge_masks(mask_map)
 
-        if merged_mask.shape != test_labels[i].shape:
+        if merged_mask.shape != ground_truth[i].shape:
             errors += 1
             continue
 
-        pixel_error_value = pixel_error(merged_mask, test_labels[i])
-        score = max_bipartite_matching_score(merged_mask, test_labels[i])
+        pixel_error_value = pixel_error(merged_mask, ground_truth[i])
+        score = max_bipartite_matching_score(merged_mask, ground_truth[i])
 
         pixel_errors.append(pixel_error_value)
         scores.append(score)
 
         print(
-            f"Image {i + 1}/{len(test_images)}: "
+            f"Image {i + 1}/{len(images)}: "
             f"Pixel error: {pixel_error_value:.2%}, "
             f"Score: {score:.2%}"
         )
