@@ -31,7 +31,7 @@ class RoomLayoutEstimator(ABC):
         return {
             label: mask
             for label, mask in self.model_inference(image).items()
-            if label in LayoutSegmentationLabelsOnlyWalls  # type: ignore
+            if label in LayoutSegmentationLabels.walls()  # type: ignore
         }
 
     @abstractmethod
