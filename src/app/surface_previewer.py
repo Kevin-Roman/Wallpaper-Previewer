@@ -359,7 +359,7 @@ class TexturePreviewer(SurfacePreviewer):
         room_image_pil: PILImage.Image,
         overlay_image_pil: PILImage.Image,
         selected_wall_plane_mask: MatLike,
-        transfer_local_highlights: bool = True,
+        transfer_local_highlights: bool = False,
     ) -> PILImage.Image | None:
         """Applies an overlay image over a source room image for chosen walls."""
         if not (

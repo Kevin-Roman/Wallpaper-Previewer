@@ -1,9 +1,14 @@
+import os
+
+# Needs to be set before cv2 is imported.
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
+
 import time
 from pathlib import Path
 
 from PIL import Image as PILImage
 
-from src.app.surface_previewer import WallpaperPreviewer
+from src.app.surface_previewer import TexturePreviewer, WallpaperPreviewer
 from src.common import LayoutSegmentationLabels
 
 from .room_layout_estimation.hedau import evaluate_hedau, get_hedau_test_data
@@ -74,7 +79,26 @@ def evaluate_wallpaper_previewing_pipeline_speed() -> None:
     print(f"Average time: {sum(elapsed_times) / len(elapsed_times):.4f} seconds")
 
 
+def evaluate_texture_previewing_pipeline_speed() -> None:
+    images = get_hedau_test_data()[0]
+
+    texture_previewer = TexturePreviewer()
+
+    elapsed_times: list[float] = []
+    for image in images[:5]:
+        start = time.perf_counter()
+        texture_previewer(
+            PILImage.fromarray(image),
+            set(LayoutSegmentationLabels.walls()),
+        )
+        end = time.perf_counter()
+        elapsed_times.append(end - start)
+
+    print(f"Average time: {sum(elapsed_times) / len(elapsed_times):.4f} seconds")
+
+
 if __name__ == "__main__":
     # evaluate_room_layout_estimation()
     # evaluate_wall_segmentation()
-    evaluate_wallpaper_previewing_pipeline_speed()
+    # evaluate_wallpaper_previewing_pipeline_speed()
+    evaluate_texture_previewing_pipeline_speed()
