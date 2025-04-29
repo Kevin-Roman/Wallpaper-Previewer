@@ -1,3 +1,4 @@
+from pathlib import Path
 from tkinter import Frame, filedialog, messagebox
 
 import customtkinter as ctk
@@ -50,6 +51,7 @@ class TexturePreviewerPage(ctk.CTk):
 
         self.room_photo_pil: PILImage.Image | None = None
         self.selected_walls: set[LayoutSegmentationLabelsOnlyWalls] = set()
+        self.hdri_path: Path | None = None
         self.output_image: PILImage.Image | None = None
 
         ctk.set_appearance_mode("Dark")
@@ -94,6 +96,15 @@ class TexturePreviewerPage(ctk.CTk):
         )
         self.room_photo_upload.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
+        # Room Photo Upload.
+        self.hdri_upload = UploadFrame(
+            self.content_frame,
+            title="HDRI (fallbacks to \nStyleLight if not provided)",
+            command=self.__upload_hdri,
+            display_image=False,
+        )
+        self.hdri_upload.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
         # Options.
         self.options_frame = OptionsFrame(self.content_frame)
         self.options_frame.grid(
@@ -126,6 +137,14 @@ class TexturePreviewerPage(ctk.CTk):
         self.room_photo_pil = PILImage.open(file_path)
         self.room_photo_upload.display_image(PILImage.open(file_path))
 
+    def __upload_hdri(self) -> None:
+        if not (
+            file_path := filedialog.askopenfilename(filetypes=[("HDRI Files", "*.exr")])
+        ):
+            return
+
+        self.hdri_path = Path(file_path)
+
     def __apply_texture(self) -> None:
         if not self.room_photo_pil:
             messagebox.showerror("Error", "Please upload a room photo.")
@@ -140,8 +159,7 @@ class TexturePreviewerPage(ctk.CTk):
             self.selected_walls.add(LayoutSegmentationLabels.WALL_RIGHT)
 
         self.output_image = self.texture_previewer(
-            self.room_photo_pil,
-            self.selected_walls,
+            self.room_photo_pil, self.selected_walls, self.hdri_path
         )
 
         if self.output_image is None:

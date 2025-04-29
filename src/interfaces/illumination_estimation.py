@@ -2,6 +2,7 @@ import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import hdrio
 import numpy as np
 from PIL import Image as PILImage
 
@@ -10,7 +11,6 @@ from adapted.illumination_estimation.StyleLight.evaluation.tonemap import (
 )
 from adapted.illumination_estimation.StyleLight.warping import warp_hdr_panorama
 from constants import TEMP_PATH
-from external.skylibs import hdrio
 
 
 class IlluminationEstimator(ABC):

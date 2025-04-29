@@ -12,7 +12,14 @@ DEFAULT_FONT_FAMILY = "montserrat"
 
 
 class UploadFrame(ctk.CTkFrame):
-    def __init__(self, master: Frame, title: str, command: Callable, **kwargs):
+    def __init__(
+        self,
+        master: Frame,
+        title: str,
+        command: Callable,
+        display_image: bool = True,
+        **kwargs,
+    ):
         super().__init__(master, **kwargs)
 
         self.columnconfigure(0, weight=1)
@@ -32,18 +39,19 @@ class UploadFrame(ctk.CTkFrame):
         )
         self.upload_button.grid(row=1, column=0, pady=10)
 
-        self.image_label = ctk.CTkLabel(
-            self,
-            text="No image uploaded",
-            font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=14),
-            width=300,
-            height=300,
-            corner_radius=10,
-            text_color="#242424",
-            fg_color="#cccccc",
-            anchor="center",
-        )
-        self.image_label.grid(row=2, column=0, pady=10)
+        if display_image:
+            self.image_label = ctk.CTkLabel(
+                self,
+                text="No image uploaded",
+                font=ctk.CTkFont(family=DEFAULT_FONT_FAMILY, size=14),
+                width=300,
+                height=300,
+                corner_radius=10,
+                text_color="#242424",
+                fg_color="#cccccc",
+                anchor="center",
+            )
+            self.image_label.grid(row=2, column=0, pady=10)
 
     def display_image(self, image: PILImage.Image, max_side_length: int = 300) -> None:
         image_thumbnail = image.copy()
@@ -165,6 +173,8 @@ class PreviewFrame(ctk.CTkFrame):
 
         label = ctk.CTkLabel(top, image=ctk_image, text="", fg_color="transparent")
         label.pack()
+
+        top.protocol("WM_DELETE_WINDOW", top.destroy)
 
 
 class WallpaperPreviewerPage(ctk.CTk):

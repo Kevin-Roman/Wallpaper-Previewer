@@ -91,6 +91,8 @@ def setup_scene(
     source_image = PILImage.open(source_image_path)
 
     scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "GPU"
     scene.render.resolution_x = source_image.width
     scene.render.resolution_y = source_image.height
     scene.render.resolution_percentage = 100

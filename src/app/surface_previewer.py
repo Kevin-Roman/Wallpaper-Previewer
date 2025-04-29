@@ -1,6 +1,7 @@
 import os
 import shutil
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -297,17 +298,19 @@ class TexturePreviewer(SurfacePreviewer):
         self,
         room_image_pil: PILImage.Image,
         selected_walls: set[LayoutSegmentationLabelsOnlyWalls],
+        hdri_path: Path | None = None,
     ) -> PILImage.Image | None:
         room_image_pil = self.standardise_image_dimensions(room_image_pil)
 
         try:
             os.makedirs(TEMP_PATH, exist_ok=True)
             temp_room_image_path = TEMP_PATH / "room_image.png"
-            temp_hdri_path = TEMP_PATH / "hdri.exr"
+            temp_hdri_path = TEMP_PATH / "hdri.exr" if not hdri_path else hdri_path
             temp_render_output_path = TEMP_PATH / "render_output.png"
 
-            # Creates an exr hdr panorama file.
-            self.illumination_estimator(room_image_pil, temp_hdri_path)
+            if not hdri_path:
+                # Creates an exr hdr panorama file.
+                self.illumination_estimator(room_image_pil, temp_hdri_path)
 
             output_image = room_image_pil.copy()
             room_layout_estimation = self.room_layout_estimator(room_image_pil)

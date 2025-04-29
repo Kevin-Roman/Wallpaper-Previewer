@@ -8,7 +8,6 @@ import torch
 import torch.nn.functional as F
 from PIL import Image as PILImage
 from torch import nn
-from torchtyping import TensorType
 from torchvision import models
 
 from constants import TORCH_DEVICE
@@ -71,7 +70,7 @@ class ResPlanarSeg(nn.Module):
             bottleneck_channels=37, in_features=self.resnet.fc.in_features
         )
 
-    def forward(self, x: TensorType[3, 320, 320]) -> torch.Tensor:
+    def forward(self, x) -> torch.Tensor:
         """Forward pass of the model."""
         x = self.resnet.conv1(x)  # 64 x 160 x 160
         x = self.resnet.bn1(x)
