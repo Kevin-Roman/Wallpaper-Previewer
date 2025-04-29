@@ -1,6 +1,6 @@
 import numpy as np
 
-from external.skylibs.envmap import rotation_matrix
+from envmap import rotation_matrix
 
 from .envmaps.environmentmap import EnvironmentMap
 

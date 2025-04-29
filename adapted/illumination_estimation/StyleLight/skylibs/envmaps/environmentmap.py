@@ -4,11 +4,11 @@ from copy import deepcopy
 import numpy as np
 from scipy.ndimage.interpolation import map_coordinates, zoom
 
-from external.skylibs.envmap.projections import *
-from external.skylibs.envmap.rotations import rotx, roty, rotz
-from external.skylibs.envmap.tetrahedronSolidAngle import tetrahedronSolidAngle
-from external.skylibs.envmap.xmlhelper import EnvmapXMLParser
-from external.skylibs.hdrio import imread
+from envmap.projections import *
+from envmap.rotations import rotx, roty, rotz
+from envmap.tetrahedronSolidAngle import tetrahedronSolidAngle
+from envmap.xmlhelper import EnvmapXMLParser
+from hdrio import imread
 
 SUPPORTED_FORMATS = [
     "angular",

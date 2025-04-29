@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 
-from external.skylibs.hdrio import imsave
+from hdrio import imsave
 
 from .util import PanoramaHandler, TonemapHDR
 

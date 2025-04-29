@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image as PILImage
 
 from external.PTI.configs import global_config
-from external.skylibs.hdrio import imsave
+from hdrio import imsave
 
 from .training.coaches.my_coach import MyCoach
 
