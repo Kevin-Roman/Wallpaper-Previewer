@@ -176,17 +176,18 @@ cython_debug/
 # Project based ignores
 output/
 
-# Temporary
+# Weights
 *.ckpt
 *.pth
+*.pkl
 
 # VSCode
 .vscode/
 
 # Other
-weights/
 temp/
 checkpoints/
 *.blend1
 releases/
 datasets/
+*.exr
