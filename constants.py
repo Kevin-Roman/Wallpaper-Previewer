@@ -9,6 +9,9 @@ TORCH_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 TEMP_PATH = Path("./temp/")
 BLENDER_SCENE_PATH = Path("./src/rendering/render_wall_with_material.blend")
 
+# Surface Previewer
+TARGET_IMAGE_SIZE = 1_500
+
 # Room Layout Estimation
 ARC_LENGTH_DEVIATION_TOLERANCE = 0.06
 # FCN Layout Augmentation (LSUN-Room)

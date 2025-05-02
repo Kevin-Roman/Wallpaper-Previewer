@@ -8,7 +8,7 @@ import numpy as np
 from cv2.typing import MatLike
 from PIL import Image as PILImage
 
-from constants import BLENDER_SCENE_PATH, TEMP_PATH
+from constants import BLENDER_SCENE_PATH, TARGET_IMAGE_SIZE, TEMP_PATH
 from src.common import LayoutSegmentationLabelsOnlyWalls
 from src.interfaces import IlluminationEstimator, RoomLayoutEstimator, WallSegmenter
 from src.models.illumination_estimation import DualStyleGANIlluminationEstimator
@@ -69,7 +69,7 @@ class SurfacePreviewer(ABC):
 
     @staticmethod
     def standardise_image_dimensions(
-        image: PILImage.Image, target_longest_size_px: int = 1_500
+        image: PILImage.Image, target_longest_size_px: int = TARGET_IMAGE_SIZE
     ) -> PILImage.Image:
         """Standardises the dimensions of an image to a target size for it's longest
         dimension."""
