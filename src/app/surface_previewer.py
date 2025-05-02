@@ -260,7 +260,7 @@ class WallpaperPreviewer(SurfacePreviewer):
         # Fill remainder of the first column.
         if remainder_vertical_pixels > 0:
             canvas[-remainder_vertical_pixels:, :pattern_width_pixels] = (
-                pattern_resized[-remainder_vertical_pixels:]
+                pattern_cropped[-remainder_vertical_pixels:]
             )
 
         # Repeat first column.
