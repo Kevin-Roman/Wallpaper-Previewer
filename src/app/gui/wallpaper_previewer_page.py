@@ -116,6 +116,8 @@ class OptionsFrame(ctk.CTkFrame):
 class PreviewFrame(ctk.CTkFrame):
     def __init__(self, master: Frame, command: Callable, **kwargs):
         super().__init__(master, **kwargs)
+        self.window_image = None
+        self.window_label = None
 
         self.columnconfigure(0, weight=1)
 
@@ -164,17 +166,20 @@ class PreviewFrame(ctk.CTkFrame):
             "<Button-1>", lambda event: self.create_image_window(image)
         )
 
-    @staticmethod
-    def create_image_window(image: PILImage.Image) -> None:
-        top = Toplevel()
-        top.title("Enlarged Image")
+    def create_image_window(self, image: PILImage.Image) -> None:
+        if self.window_image is None or not self.window_image.winfo_exists():
+            top = Toplevel()
+            top.title("Enlarged Image")
+            self.window_image = top
+
+            label = ctk.CTkLabel(self.window_image, text="", fg_color="transparent")
+            label.pack()
+            self.window_label = label
 
         ctk_image = ctk.CTkImage(image, size=(image.width, image.height))
-
-        label = ctk.CTkLabel(top, image=ctk_image, text="", fg_color="transparent")
-        label.pack()
-
-        top.protocol("WM_DELETE_WINDOW", top.destroy)
+        self.window_label.configure(image=ctk_image)
+        self.window_label.image = ctk_image
+        self.window_image.lift()
 
 
 class WallpaperPreviewerPage(ctk.CTk):
