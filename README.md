@@ -47,6 +47,11 @@ Place in: `weights/wall_segmentation`
 File: `network-snapshot-002000`  
 Place in: `weights/illumination_estimation`
 
+
+### Mirrors
+
+We have also mirrored the above linked weights, in the case that the original links become broken or unavailable: <https://drive.google.com/drive/folders/1PiZ6MWZfN9MBKy2gWIxWbJChZNXbQm6T?usp=sharing>
+
 ## Setup Instructions
 
 ### Python Version
@@ -57,7 +62,7 @@ This software only works on Python 3.11 due to the use of `bpy`.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # On Windows: source .venv/Scripts/activate
 ```
 
 ### Install Dependencies
