@@ -1,6 +1,26 @@
-# Wallpaper Previewing System
+# Wallpaper Previewer
 
-This project presents a functional wallpaper and texture previewing software that leverages open-source models. Created by Kevin Roman.
+This open-source project presents a functional wallpaper and texture room previewing software that leverages open-source models, running locally. It was submitted as part of the University Dissertation, achieving a First-Class grade, which can be read at <https://drive.google.com/file/d/1PVYoZnT21Wru38vmFbLnHsOMBOreMvup/view?usp=drive_link>.
+
+## Demo Images
+
+<table width="100%">
+    <tr>
+        <td width="50%" valign="top" style="padding-right: 16px;">
+            <img src="docs/images/demonstration_UI.jpg" alt="App Demo" width="100%" />
+            <p style="text-align: center;"><em>Figure: The wallpaper previewing mode in the app after a sample input image is uploaded and the output image generated.</em></p>
+        </td>
+        <td width="50%" valign="top">
+            <img src="docs/images/HLA_wallpaper_previewer.svg"
+                alt="High-Level Architecture diagram of the wallpaper previewing pipeline." width="100%" />
+            <p style="text-align: center;"><em>Figure: High-Level Architecture of the wallpaper previewing pipeline.</em></p>
+            <img src="docs/images/HLA_texture_previewer.svg"
+                alt="High-Level Architecture diagram of the previewing system with texture rendering pipeline"
+                width="100%" />
+            <p style="text-align: center;"><em>Figure: High-Level Architecture of the previewing system with texture rendering pipeline.</em></p>
+        </td>
+    </tr>
+</table>
 
 ## Project Structure
 
@@ -8,7 +28,7 @@ This project presents a functional wallpaper and texture previewing software tha
 Wallpaper-Previewer/
 │
 ├── external/           # Unmodified external repositories used.
-├── adapted/            # External repositories with custom modifications. 
+├── adapted/            # External repositories with custom modifications.
 ├── src/                # Core source code developed for the project.
 │   ├── app/            # GUI and surface previewers.
 │   ├── interfaces/     # Interfaces for each key system component.
@@ -37,7 +57,7 @@ Place in: `weights/room_layout_estimation`
 Files:
 
 - `best_encoder_epoch_19.pth`
-- `best_decoder_epoch_19.pth`  
+- `best_decoder_epoch_19.pth`
 
 Place in: `weights/wall_segmentation`
 
@@ -46,7 +66,6 @@ Place in: `weights/wall_segmentation`
 <https://github.com/Wanggcong/StyleLight>  
 File: `network-snapshot-002000`  
 Place in: `weights/illumination_estimation`
-
 
 ### Mirrors
 
@@ -62,7 +81,7 @@ This software only works on Python 3.11 due to the use of `bpy`.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate   # On Windows: source .venv/Scripts/activate
+source .venv/bin/activate   # On Windows: .venv/Scripts/activate
 ```
 
 ### Install Dependencies
